@@ -1,0 +1,10 @@
+{
+    "name": "cassandrareader",
+    "parameter": {
+        "username": "",
+        "password": "",
+        "connection": "",
+        "contactPoint":"",
+        "querySql":[]
+    }
+}
