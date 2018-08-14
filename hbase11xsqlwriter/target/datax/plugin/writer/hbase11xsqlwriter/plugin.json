@@ -1,7 +1,0 @@
-{
-    "name": "hbase11xsqlwriter",
-    "class": "com.alibaba.datax.plugin.writer.hbase11xsqlwriter.HbaseSQLWriter",
-    "description": "useScene: prod. mechanism: use INSERT INTO with lib: cassandra-driver-core",
-    "developer": "alibaba"
-}
-
