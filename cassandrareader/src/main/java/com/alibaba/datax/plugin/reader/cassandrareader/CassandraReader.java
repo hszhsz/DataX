@@ -1,19 +1,10 @@
 package com.alibaba.datax.plugin.reader.cassandrareader;
 
-import com.alibaba.datax.common.element.Record;
-import com.alibaba.datax.common.element.StringColumn;
-import com.alibaba.datax.common.exception.CommonErrorCode;
 import com.alibaba.datax.common.plugin.RecordSender;
 import com.alibaba.datax.common.spi.Reader;
 import com.alibaba.datax.common.util.Configuration;
-import com.datastax.driver.core.*;
-import com.google.gson.Gson;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Desc:
@@ -35,7 +26,6 @@ public class CassandraReader extends Reader {
         public void init() {
             this.originConfig = this.getPluginJobConf();
             CassandraHelper.validateConfiguration(originConfig);
-
         }
 
         @Override
@@ -46,68 +36,31 @@ public class CassandraReader extends Reader {
 
     public static class Task extends Reader.Task {
 
-        private static Logger LOG = LoggerFactory.getLogger(CassandraReader.Task.class);
         private Configuration taskConfig;
-        private Cluster cluster;
-        private Session session;
-        // private Map<DataType, String> columnMap;
-        private Gson gson = new Gson();
+        private CassandraReaderProxy proxy;
 
         @Override
         public void init() {
             this.taskConfig = super.getPluginJobConf();
+            this.proxy = new CassandraReaderProxy(taskConfig);
         }
+
 
         @Override
         public void prepare() {
-            String contactPoint = taskConfig.getNecessaryValue(Key.CONTACTPOINT, CommonErrorCode.CONFIG_ERROR);
-            cluster = Cluster.builder().addContactPoint(contactPoint).build();
-            session = cluster.newSession();
-            //  columnMap=CassandraHelper.getColumnMap(cluster,taskConfig);
+            proxy.init();
         }
 
         @Override
         public void startRead(RecordSender recordSender) {
-            String sql = taskConfig.getNecessaryValue(Constant.SQL, CommonErrorCode.CONFIG_ERROR);
-            Record record = recordSender.createRecord();
-            ResultSet resultSet;
-            try {
-                 resultSet = session.execute(sql);
-            }catch (Exception e){
-                LOG.error("Exception", e);
-                return;
-            }
-            Iterator<Row> result = resultSet.iterator();
-            while (result.hasNext()) {
-                try {
-                    Row row = result.next();
-                    Iterator<ColumnDefinitions.Definition> it = row.getColumnDefinitions().asList().iterator();
-                    while (it.hasNext()) {
-                        ColumnDefinitions.Definition definition = it.next();
-                        Map<String, Object> columnInfo = CassandraHelper.buildColumnInfo(row, definition);
-                        if (!columnInfo.isEmpty())
-                            record.addColumn(new StringColumn(gson.toJson(columnInfo)));
-                    }
-                } catch (Exception e) {
-                    LOG.info("Exception", e);
-                    super.getTaskPluginCollector().collectDirtyRecord(record, e);
-                    record = recordSender.createRecord();
-                    continue;
-                }
-                recordSender.sendToWriter(record);
-                record = recordSender.createRecord();
-            }
-            recordSender.flush();
+            proxy.startRead(recordSender, this.getTaskPluginCollector());
+
         }
 
         @Override
         public void destroy() {
-            if (session != null) {
-                session.close();
-            }
-            if (cluster != null) {
-                cluster.close();
-            }
+            if(proxy!=null)
+                proxy.close();
         }
     }
 }

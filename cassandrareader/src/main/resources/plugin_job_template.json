@@ -3,8 +3,18 @@
     "parameter": {
         "username": "",
         "password": "",
-        "connection": "",
         "contactPoint":"",
-        "querySql":[]
+        "querySql":[],
+        "mode":"normal",
+        "connection": {
+            "host": "",
+            "port": 9042,
+            "username": "",
+            "password": "",
+            "local_min": 1,
+            "local_max": 2,
+            "distance_min": 1,
+            "distance_max": 2
+        }
     }
 }
