@@ -46,7 +46,6 @@ public class CassandraReaderProxy {
     public void startRead(RecordSender recordSender, TaskPluginCollector collector) {
 
         String sql = taskConfig.getNecessaryValue(Constants.SQL, CommonErrorCode.CONFIG_ERROR);
-        Record record = recordSender.createRecord();
         ResultSet resultSet;
         try {
             resultSet = session.execute(sql);
@@ -60,6 +59,7 @@ public class CassandraReaderProxy {
         tableInfo.put(Constants.TABLE, tableInfoFromSql.get(Constants.TABLE));
         String mode=taskConfig.getString(Key.MODE, Constants.ALL_MODE);
         Iterator<Row> result = resultSet.iterator();
+        Record record = recordSender.createRecord();
         while (result.hasNext()) {
             try {
                 Row row = result.next();
