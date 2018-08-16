@@ -1,0 +1,40 @@
+{ "job":{
+	"content":[
+		{
+			"reader":{
+				"name":"cassandrareader",
+				"parameter":{
+					"host":"localhost",
+					"connection":{
+						"distance_max":2,
+						"distance_min":1,
+						"host":"localhost",
+						"local_max":2,
+						"local_min":1,
+						"password":"",
+						"port":9042,
+						"username":""
+					},
+					"contactPoint":"localhost",
+					"mode":"all",
+					"password":"",
+					"querySql":[
+						"select * from test.test"
+					],
+					"username":""
+				}
+			},
+			"writer":{
+				 "name": "streamwriter",
+                    "parameter": {
+                        "print":true
+                    }
+	}}
+	],
+	"setting":{
+		"speed":{
+			"channel":"2"
+		}
+	}
+}
+}
