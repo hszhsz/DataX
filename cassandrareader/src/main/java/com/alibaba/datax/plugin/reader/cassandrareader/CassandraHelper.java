@@ -54,7 +54,7 @@ public class CassandraHelper {
 
     }
 
-    public static Map<String , DataType> getColumnMap(Cluster cluster, Configuration taskConfig) {
+    public static Map<String, DataType> getColumnMap(Cluster cluster, Configuration taskConfig) {
         String sql = taskConfig.getNecessaryValue(Constants.SQL, CommonErrorCode.CONFIG_ERROR);
         Map<String, Object> split = splitSQL(sql);
         TableMetadata tableMetadata = cluster.getMetadata().getKeyspace((String) split.get(Constants.KETSPACE)).getTable((String) split.get(Constants.TABLE));
@@ -103,15 +103,12 @@ public class CassandraHelper {
     public static Map<String, Object> buildColumnInfo(Row row, ColumnDefinitions.Definition definition) {
         DataType dataType = definition.getType();
         String columnName = definition.getName();
-        Map<String, Object> columnInfo = new HashMap<>(10);
+        Map<String, Object> columnInfo = new HashMap<>(3);
 
         Object obj = row.getObject(columnName);
-
-        if (obj != null) {
-            columnInfo.put("columnType", dataType);
-            columnInfo.put("columnName", columnName);
-            columnInfo.put("value", obj);
-        }
+        columnInfo.put("columnType", dataType.getName());
+        columnInfo.put("columnName", columnName);
+        columnInfo.put("value", obj);
         return columnInfo;
 
     }

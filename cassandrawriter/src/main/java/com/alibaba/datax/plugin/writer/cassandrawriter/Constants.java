@@ -47,4 +47,7 @@ public final class Constants {
     //批量写入间隔时间
     public static final String DURATION = "duration";
 
+    public static final String TTL = "ttl";
+
+
 }

@@ -40,7 +40,7 @@ public class CassandraTaskProxy {
 
     public void startWriter(RecordReceiver lineReceiver, TaskPluginCollector taskPluginCollector) {
         Record record;
-        List<Record> recordList = new ArrayList<Record>();
+        List<Record> recordList = new ArrayList<Record>(batchSize);
         try {
             while ((record = lineReceiver.getFromReader()) != null) {
                 recordList.add(record);
@@ -48,28 +48,21 @@ public class CassandraTaskProxy {
                     // cassandraHelper.createTable(record);
                     if (recordList.size() >= batchSize || System.currentTimeMillis() - timer > duration * 1000) {
                         cassandraHelper.insertBatch(recordList);
+                        recordList.clear();
                     }
                     //cassandraHelper.insert(record);
                 } catch (Exception e) {
+                    LOG.error(String.format("record is empty, 您配置nullMode为[skip],将会忽略这条记录,record[%s]", record.toString()));
                     taskPluginCollector.collectDirtyRecord(record, e);
                     continue;
-                }
-                try {
-                } catch (IllegalArgumentException e) {
-                    if (e.getMessage().equals("No columns to insert")) {
-                        LOG.info(String.format("record is empty, 您配置nullMode为[skip],将会忽略这条记录,record[%s]", record.toString()));
-                        continue;
-                    } else {
-                        taskPluginCollector.collectDirtyRecord(record, e);
-                        continue;
-                    }
                 }
             }
         } catch (Exception e) {
             throw DataXException.asDataXException(CassandraWriterErrorCode.INSERT_CASSANDRA_ERROR, e);
         } finally {
-            if(!recordList.isEmpty()){
+            if (!recordList.isEmpty()) {
                 cassandraHelper.insertBatch(recordList);
+                recordList.clear();
             }
             cassandraHelper.close();
         }

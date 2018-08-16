@@ -12,6 +12,7 @@
         "preSql":[],
         "batchSize":10,
         "duration":10,
+        "ttl":0,
         "connection": {
                 "host": "",
                 "port": 9042,

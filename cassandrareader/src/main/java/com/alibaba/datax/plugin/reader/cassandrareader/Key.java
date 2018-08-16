@@ -26,5 +26,5 @@ public final class Key {
 
     public final static String CONNECTION_DISTANCE_MAX = "distance_max";
 
-    public static final String MODE="mode";
+    public static final String MODE = "mode";
 }

@@ -3,6 +3,7 @@ package com.alibaba.datax.plugin.writer.cassandrawriter;
 import com.alibaba.datax.common.element.Column;
 import com.alibaba.datax.common.element.Record;
 import com.alibaba.datax.common.util.Configuration;
+import com.alibaba.fastjson.JSON;
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.InvalidQueryException;
 import com.google.gson.Gson;
@@ -78,7 +79,7 @@ public class CassandraHelper {
         }
     }
 
-    private static Cluster  buildCluster(Configuration originConfig) {
+    private static Cluster buildCluster(Configuration originConfig) {
         Map<String, Object> connection = originConfig.getMap(Constants.CONNECTION);
         // 表示和集群里的机器至少有2个连接 最多有4个连接
         Cluster cluster = Cluster.builder()
@@ -302,6 +303,11 @@ public class CassandraHelper {
             }
         }
         sb.append(") ");
+        int ttl = config.getInt(Constants.TTL, 0);
+        if (ttl > 0) {
+            sb.append("USING ttl ");
+            sb.append(ttl);
+        }
         return sb.toString();
     }
 
@@ -324,9 +330,9 @@ public class CassandraHelper {
                     } else {
                         try {
                             buildValue(columnTypeMap.get((String) colObj), record, i, obj);
-                        }catch (Exception e){
+                        } catch (Exception e) {
 
-                            LOG.error("buildColumnValue fail ,record:"+record.toString()+""+e.getMessage()+"");
+                            LOG.error("buildColumnValue fail ,record:" + record.toString() + "" + e.getMessage() + "");
                             break;
                         }
                     }
@@ -337,8 +343,8 @@ public class CassandraHelper {
                 for (int i = 0; i < colSize; i++) {
                     try {
                         buildValue(columnListFromTable.get(i).getType(), record, i, obj);
-                    }catch (Exception e){
-                        LOG.error("buildColumnValue fail ,record:"+record.toString()+""+e.getMessage()+"");
+                    } catch (Exception e) {
+                        LOG.error("buildColumnValue fail ,record:" + record.toString() + "" + e.getMessage() + "");
                         break;
                     }
                 }
@@ -358,8 +364,9 @@ public class CassandraHelper {
         if (col == null || col.getRawData() == null) {
             return;
         }
+        //obj[i]=col.asBigInteger().intValue();
+        List<DataType> typeArguments = colType.getTypeArguments();
         switch (colType.getName()) {
-
             case INT:
                 BigInteger bigInteger = col.asBigInteger();
                 obj[i] = (bigInteger == null ? null : bigInteger.intValue());
@@ -427,56 +434,53 @@ public class CassandraHelper {
                 obj[i] = valueDATE;
                 break;
             case INET:
-                obj[i] = gsonParseObjectFromString(gson, col.asString(), InetAddress.class);
+                obj[i] = gsonParseObjectFromString(col.asString(), InetAddress.class);
                 break;
             case TIMEUUID:
-                obj[i] = gsonParseObjectFromString(gson, col.asString(), UUID.class);
+                obj[i] = gsonParseObjectFromString(col.asString(), UUID.class);
                 break;
 
             case CUSTOM:
-                obj[i] = gsonParseObjectFromString(gson, col.asString(), ByteBuffer.class);
+                obj[i] = gsonParseObjectFromString(col.asString(), ByteBuffer.class);
                 break;
             case COUNTER:
-                obj[i] = gsonParseObjectFromString(gson, col.asString(), Long.class);
+                obj[i] = gsonParseObjectFromString(col.asString(), Long.class);
                 break;
 
             case UUID:
-                obj[i] = gsonParseObjectFromString(gson, col.asString(), UUID.class);
+                obj[i] = gsonParseObjectFromString(col.asString(), UUID.class);
                 break;
 
             case DURATION:
-                obj[i] = gsonParseObjectFromString(gson, col.asString(), Duration.class);
+                obj[i] = gsonParseObjectFromString(col.asString(), Duration.class);
                 break;
 
             case LIST:
-                obj[i] = gsonParseObjectFromString(gson, col.asString(), List.class);
+                List objList = (List) gsonParseObjectFromString(col.asString(), List.class);
+                obj[i] = objList;
                 break;
-
             case MAP:
-                obj[i] = gsonParseObjectFromString(gson, col.asString(), Map.class);
+                Map objMap = (Map) gsonParseObjectFromString(col.asString(), Map.class);
+                obj[i] = objMap;
                 break;
-
             case SET:
-
-                obj[i] = gsonParseObjectFromString(gson, col.asString(), Set.class);
+                Set objListSet = (Set) gsonParseObjectFromString(col.asString(), Set.class);
+                obj[i] = objListSet;
                 break;
-
             case UDT:
-                obj[i] = gsonParseObjectFromString(gson, col.asString(), UDTValue.class);
+                obj[i] = gsonParseObjectFromString(col.asString(), UDTValue.class);
                 break;
-
             case TUPLE:
-                obj[i] = gsonParseObjectFromString(gson, col.asString(), TupleValue.class);
+                obj[i] = gsonParseObjectFromString(col.asString(), TupleValue.class);
                 break;
-
         }
 
 
     }
 
-    public Object gsonParseObjectFromString(Gson gson, String s, Class classType) {
+    public Object gsonParseObjectFromString(String s, Class classType) {
         try {
-            return gson.fromJson(s, classType);
+            return JSON.parseObject(s, classType);
         } catch (Exception e) {
             LOG.error(e.getMessage() + ";content=" + s);
             return null;

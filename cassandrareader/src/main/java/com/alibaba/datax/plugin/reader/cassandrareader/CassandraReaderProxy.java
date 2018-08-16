@@ -5,8 +5,8 @@ import com.alibaba.datax.common.exception.CommonErrorCode;
 import com.alibaba.datax.common.plugin.RecordSender;
 import com.alibaba.datax.common.plugin.TaskPluginCollector;
 import com.alibaba.datax.common.util.Configuration;
+import com.alibaba.fastjson.JSON;
 import com.datastax.driver.core.*;
-import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +30,6 @@ public class CassandraReaderProxy {
     private Configuration taskConfig;
     private Cluster cluster;
     private Session session;
-    private Gson gson = new Gson();
 
     public CassandraReaderProxy(Configuration taskConfig) {
         this.taskConfig = taskConfig;
@@ -50,14 +49,14 @@ public class CassandraReaderProxy {
         } catch (Exception e) {
             LOG.error("Exception", e);
             return;
-        }finally {
+        } finally {
             close();
         }
         Map<String, Object> tableInfoFromSql = CassandraHelper.splitSQL(sql);
         Map<String, Object> tableInfo = new HashMap<>(2);
         tableInfo.put(Constants.KETSPACE, tableInfoFromSql.get(Constants.KETSPACE));
         tableInfo.put(Constants.TABLE, tableInfoFromSql.get(Constants.TABLE));
-        String mode=taskConfig.getString(Key.MODE, Constants.ALL_MODE);
+        String mode = taskConfig.getString(Key.MODE, Constants.ALL_MODE);
         Iterator<Row> result = resultSet.iterator();
         Record record = recordSender.createRecord();
         while (result.hasNext()) {
@@ -108,10 +107,15 @@ public class CassandraReaderProxy {
                     Long valueTIME = row.get(columnName, TypeCodec.time());
                     record.addColumn(new LongColumn(valueTIME));
                     break;
+                case COUNTER:
+                    Long counter = row.get(columnName, TypeCodec.counter());
+                    record.addColumn(new LongColumn(counter));
+                    break;
                 case ASCII:
                     String valueASCII = row.get(columnName, TypeCodec.ascii());
                     record.addColumn(new StringColumn(valueASCII));
                     break;
+
                 case BIGINT:
                     Long valueBIGINT = row.get(columnName, TypeCodec.bigint());
                     record.addColumn(new LongColumn(valueBIGINT));
@@ -155,7 +159,6 @@ public class CassandraReaderProxy {
                 case INET:
                 case TIMEUUID:
                 case CUSTOM:
-                case COUNTER:
                 case UUID:
                 case DURATION:
                 case LIST:
@@ -164,7 +167,7 @@ public class CassandraReaderProxy {
                 case UDT:
                 case TUPLE:
                     Object value = row.getObject(columnName);
-                    record.addColumn(new StringColumn(gson.toJson(value)));
+                    record.addColumn(new StringColumn(JSON.toJSON(value).toString()));
                     break;
             }
 
@@ -173,7 +176,7 @@ public class CassandraReaderProxy {
     }
 
     private void buildRecordWithAllMode(Row row, Record record, Map<String, Object> tableInfo) {
-        record.addColumn(new StringColumn(gson.toJson(tableInfo)));
+        record.addColumn(new StringColumn(JSON.toJSON(tableInfo).toString()));
         Iterator<ColumnDefinitions.Definition> it = row.getColumnDefinitions().asList().iterator();
         int index = 1;
         while (it.hasNext()) {
@@ -181,7 +184,7 @@ public class CassandraReaderProxy {
             Map<String, Object> columnInfo = CassandraHelper.buildColumnInfo(row, definition);
             // if (!columnInfo.isEmpty()) {有的时候列名包含值，列值为空
             columnInfo.put(Constants.INDEX, index);
-            record.addColumn(new StringColumn(gson.toJson(columnInfo)));
+            record.addColumn(new StringColumn(JSON.toJSON(columnInfo).toString()));
             // }
             index = index + 1;
         }

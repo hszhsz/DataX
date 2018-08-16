@@ -59,7 +59,7 @@ public class CassandraReader extends Reader {
 
         @Override
         public void destroy() {
-            if(proxy!=null)
+            if (proxy != null)
                 proxy.close();
         }
     }
