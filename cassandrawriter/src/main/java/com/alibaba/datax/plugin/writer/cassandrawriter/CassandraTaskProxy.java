@@ -68,7 +68,9 @@ public class CassandraTaskProxy {
         } catch (Exception e) {
             throw DataXException.asDataXException(CassandraWriterErrorCode.INSERT_CASSANDRA_ERROR, e);
         } finally {
-
+            if(!recordList.isEmpty()){
+                cassandraHelper.insertBatch(recordList);
+            }
             cassandraHelper.close();
         }
     }

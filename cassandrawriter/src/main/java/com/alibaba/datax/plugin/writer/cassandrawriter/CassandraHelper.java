@@ -296,8 +296,9 @@ public class CassandraHelper {
 
         sb.append(") VALUES ( ");
         for (int i = 0; i < columns.size(); i++) {
+            sb.append("?");
             if (i != (columns.size() - 1)) {
-                sb.append("?");
+                sb.append(",");
             }
         }
         sb.append(") ");
