@@ -30,7 +30,6 @@ public class CassandraReaderProxy {
     private Configuration taskConfig;
     private Cluster cluster;
     private Session session;
-    private Map<DataType, String> columnMap;
     private Gson gson = new Gson();
 
     public CassandraReaderProxy(Configuration taskConfig) {
@@ -40,7 +39,6 @@ public class CassandraReaderProxy {
     public void init() {
         cluster = CassandraHelper.initCluster(taskConfig);//Cluster.builder().addContactPoint(contactPoint).build();
         session = cluster.newSession();
-        columnMap = CassandraHelper.getColumnMap(cluster, taskConfig);
     }
 
     public void startRead(RecordSender recordSender, TaskPluginCollector collector) {
@@ -52,6 +50,8 @@ public class CassandraReaderProxy {
         } catch (Exception e) {
             LOG.error("Exception", e);
             return;
+        }finally {
+            close();
         }
         Map<String, Object> tableInfoFromSql = CassandraHelper.splitSQL(sql);
         Map<String, Object> tableInfo = new HashMap<>(2);
@@ -163,7 +163,7 @@ public class CassandraReaderProxy {
                 case SET:
                 case UDT:
                 case TUPLE:
-                    Object value = row.getTupleValue(columnName);
+                    Object value = row.getObject(columnName);
                     record.addColumn(new StringColumn(gson.toJson(value)));
                     break;
             }

@@ -25,9 +25,10 @@ public class CassandraWriter extends Writer {
         }
 
         @Override
-        public void  prepare() {
-            Boolean truncate = originConfig.getBool(Constants.TRUNCATE,false);
-            if(truncate){
+        public void prepare() {
+            CassandraHelper.prepare(this.originConfig);
+            Boolean truncate = originConfig.getBool(Constants.TRUNCATE, false);
+            if (truncate) {
                 CassandraHelper.truncateTable(this.originConfig);
             }
         }
@@ -66,7 +67,7 @@ public class CassandraWriter extends Writer {
 
         @Override
         public void destroy() {
-            if(null != cassandraTaskProxy) {
+            if (null != cassandraTaskProxy) {
                 cassandraTaskProxy.close();
             }
         }

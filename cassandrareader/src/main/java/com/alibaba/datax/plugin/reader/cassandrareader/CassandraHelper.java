@@ -26,6 +26,7 @@ public class CassandraHelper {
                 Configuration confTmp = originConfig.clone();
                 confTmp.set(Constants.SQL, sql);
                 confTmp.remove(Key.QUERY_SQL);
+                configurations.add(confTmp);
             }
         }
 
@@ -53,7 +54,7 @@ public class CassandraHelper {
 
     }
 
-    public static Map<DataType, String> getColumnMap(Cluster cluster, Configuration taskConfig) {
+    public static Map<String , DataType> getColumnMap(Cluster cluster, Configuration taskConfig) {
         String sql = taskConfig.getNecessaryValue(Constants.SQL, CommonErrorCode.CONFIG_ERROR);
         Map<String, Object> split = splitSQL(sql);
         TableMetadata tableMetadata = cluster.getMetadata().getKeyspace((String) split.get(Constants.KETSPACE)).getTable((String) split.get(Constants.TABLE));
@@ -63,7 +64,7 @@ public class CassandraHelper {
         Set<String> columnsFromSelect = (HashSet<String>) split.get(Constants.COLUMN);
         columns.stream().forEach(x -> {
             if (columnsFromSelect.isEmpty() || columnsFromSelect.contains(x.getName()))
-                columnMap.put(x.getType(), x.getName());
+                columnMap.put(x.getName(), x.getType());
         });
         return columnMap;
     }
@@ -78,7 +79,7 @@ public class CassandraHelper {
             throw new InvalidQueryException(" 不支持的操作，请检查 ");
         }*/
         String keySpaceAndAfter = sql.substring(keySpaceStartIndex + 5);
-        String[] keySpaceAndTable = keySpaceAndAfter.split(".");
+        String[] keySpaceAndTable = keySpaceAndAfter.split("\\.");
         if (keySpaceAndTable.length < 2) {
             throw new InvalidQueryException(" SQL语法错误，请检查 ");
         }
@@ -132,7 +133,7 @@ public class CassandraHelper {
         // addContactPoints:cassandra节点ip withPort:cassandra节点端口 默认9042
         // withCredentials:cassandra用户名密码 如果cassandra.yaml里authenticator：AllowAllAuthenticator 可以不用配置
         Cluster cluster = Cluster.builder()
-                .addContactPoints((String) taskConfig.get(Key.CONNECTION_HOST))
+                .addContactPoints((String) connection.get(Key.CONNECTION_HOST))
                 .withPort((Integer) connection.getOrDefault(Key.CONNECTION_PORT, 9042))
                 .withCredentials((String) connection.getOrDefault(Key.CONNECTION_USERNAME, ""), (String) connection.getOrDefault(Key.CONNECTION_PASSWORD, ""))
                 .withPoolingOptions(poolingOptions).build();

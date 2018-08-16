@@ -9,6 +9,9 @@
             "class": "",
             "replication_factor": 1
         },
+        "preSql":[],
+        "batchSize":10,
+        "duration":10,
         "connection": {
                 "host": "",
                 "port": 9042,

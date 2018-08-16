@@ -1,7 +1,7 @@
 {
     "name": "cassandrareader",
-    "class": "com.alibaba.datax.plugin.reader.cassandrareader.Cassandrareader",
+    "class": "com.alibaba.datax.plugin.reader.cassandrareader.CassandraReader",
     "description": "useScene: prod. mechanism: Scan to read data.",
-    "developer": "alibaba"
+    "developer": "terminus"
 }
 

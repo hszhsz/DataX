@@ -40,4 +40,11 @@ public final class Constants {
     public final static String KEYSPACE_REPLICATION_FACTOR = "replication_factor";
 
     public final static String TRUNCATE = "truncate";
+
+    public static final String PRESQL = "preSql";
+    //批量写入的大小
+    public static final String BATCH_SIZE = "batchSize";
+    //批量写入间隔时间
+    public static final String DURATION = "duration";
+
 }
