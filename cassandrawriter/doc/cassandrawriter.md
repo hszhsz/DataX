@@ -8,7 +8,7 @@
 
 CassandraWriter 插件实现了写入数据到 cassandra 目的表的功能。在底层实现上， CassandraWriter 通过 JDBC 连接远程 cassandra 数据库，并执行相应的 insert into ... 的 sql 语句将数据写入 cassandra，内部会分批次提交入库。
 
-
+**暂不支持Tuple类型写入，用户自定义类型待测试。**
 ## 2 功能说明
 
 ### 2.1 配置样例
