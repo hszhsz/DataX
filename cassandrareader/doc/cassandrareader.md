@@ -9,7 +9,7 @@ ___
 
 CassandraReader插件实现了从Cassandra读取数据。在底层实现上，CassandraReader通过JDBC连接远程Cassandra数据库，并执行相应的sql语句将数据从mysql库中SELECT出来。
 
-**不同于其他关系型数据库，CassandraReader CQL有很多不同**
+**不同于其他关系型数据库，CassandraReader CQL有很多不同**  **语法参考 http://git.terminus.io/bigdata/datax**
 
 ## 2 实现原理
 
