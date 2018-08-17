@@ -18,9 +18,11 @@
 					"contactPoint":"localhost",
 					"mode":"normal",
 					"password":"",
-					"querySql":[
+					"splitPk":"a",
+					"allowFilter":true,
+					"querySql":
 						"select * from test.test"
-					],
+					,
 					"username":""
 				}
 			},
@@ -56,7 +58,7 @@
 	],
 	"setting":{
 		"speed":{
-			"channel":"1"
+			"channel":"2"
 		}
 	}
 }

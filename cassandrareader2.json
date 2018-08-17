@@ -16,11 +16,11 @@
 						"username":""
 					},
 					"contactPoint":"localhost",
-					"mode":"all",
+					"mode":"normal",
 					"password":"",
-					"querySql":[
-						"select * from test.test"
-					],
+					"querySql":
+						"select a,b,c,d from test.test where a>0 and f=0 allow filtering",
+					"splitPk":"a",
 					"username":""
 				}
 			},

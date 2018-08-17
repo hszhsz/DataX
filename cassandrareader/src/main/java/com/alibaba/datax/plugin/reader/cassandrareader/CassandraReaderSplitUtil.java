@@ -92,7 +92,7 @@ public class CassandraReaderSplitUtil {
         }
 
         //合并 a>1 , a>=2
-        if (!where.trim().isEmpty()) {
+        if (where!=null&&!where.trim().isEmpty()) {
             List<String> conditionList = new ArrayList<>();
             String[] conditions = where.trim().split("and");
             for (String condition : conditions) {
