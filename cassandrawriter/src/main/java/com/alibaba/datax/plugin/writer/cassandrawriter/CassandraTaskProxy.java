@@ -49,6 +49,7 @@ public class CassandraTaskProxy {
                     if (recordList.size() >= batchSize || System.currentTimeMillis() - timer > duration * 1000) {
                         cassandraHelper.insertBatch(recordList);
                         recordList.clear();
+                        timer=System.currentTimeMillis();
                     }
                     //cassandraHelper.insert(record);
                 } catch (Exception e) {
@@ -63,8 +64,10 @@ public class CassandraTaskProxy {
             if (!recordList.isEmpty()) {
                 cassandraHelper.insertBatch(recordList);
                 recordList.clear();
+                timer=System.currentTimeMillis();
             }
             cassandraHelper.close();
+
         }
     }
 
