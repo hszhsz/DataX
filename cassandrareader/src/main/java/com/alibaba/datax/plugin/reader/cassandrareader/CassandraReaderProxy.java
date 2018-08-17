@@ -18,6 +18,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import static com.alibaba.fastjson.serializer.SerializerFeature.DisableCircularReferenceDetect;
+
 /**
  * Desc:
  * Mail: shunshun.yss@alibaba-inc.com
@@ -36,13 +38,13 @@ public class CassandraReaderProxy {
     }
 
     public void init() {
-        cluster = CassandraHelper.initCluster(taskConfig);//Cluster.builder().addContactPoint(contactPoint).build();
+        cluster = CassandraHelper.buildCluster(taskConfig);//Cluster.builder().addContactPoint(contactPoint).build();
         session = cluster.newSession();
     }
 
     public void startRead(RecordSender recordSender, TaskPluginCollector collector) {
 
-        String sql = taskConfig.getNecessaryValue(Constants.SQL, CommonErrorCode.CONFIG_ERROR);
+        String sql = taskConfig.getNecessaryValue(Key.QUERY_SQL, CommonErrorCode.CONFIG_ERROR);
         ResultSet resultSet;
         try {
             resultSet = session.execute(sql);
@@ -52,10 +54,9 @@ public class CassandraReaderProxy {
         } finally {
             close();
         }
-        Map<String, Object> tableInfoFromSql = CassandraHelper.splitSQL(sql);
         Map<String, Object> tableInfo = new HashMap<>(2);
-        tableInfo.put(Constants.KETSPACE, tableInfoFromSql.get(Constants.KETSPACE));
-        tableInfo.put(Constants.TABLE, tableInfoFromSql.get(Constants.TABLE));
+        tableInfo.put(Constants.KETSPACE, taskConfig.get(Constants.KETSPACE));
+        tableInfo.put(Constants.TABLE, taskConfig.get(Constants.TABLE));
         String mode = taskConfig.getString(Key.MODE, Constants.ALL_MODE);
         Iterator<Row> result = resultSet.iterator();
         Record record = recordSender.createRecord();
@@ -167,7 +168,7 @@ public class CassandraReaderProxy {
                 case UDT:
                 case TUPLE:
                     Object value = row.getObject(columnName);
-                    record.addColumn(new StringColumn(JSON.toJSON(value).toString()));
+                    record.addColumn(new StringColumn(JSON.toJSONString(value, DisableCircularReferenceDetect)));
                     break;
             }
 
@@ -176,7 +177,7 @@ public class CassandraReaderProxy {
     }
 
     private void buildRecordWithAllMode(Row row, Record record, Map<String, Object> tableInfo) {
-        record.addColumn(new StringColumn(JSON.toJSON(tableInfo).toString()));
+        record.addColumn(new StringColumn(JSON.toJSONString(tableInfo)));
         Iterator<ColumnDefinitions.Definition> it = row.getColumnDefinitions().asList().iterator();
         int index = 1;
         while (it.hasNext()) {
@@ -184,7 +185,7 @@ public class CassandraReaderProxy {
             Map<String, Object> columnInfo = CassandraHelper.buildColumnInfo(row, definition);
             // if (!columnInfo.isEmpty()) {有的时候列名包含值，列值为空
             columnInfo.put(Constants.INDEX, index);
-            record.addColumn(new StringColumn(JSON.toJSON(columnInfo).toString()));
+            record.addColumn(new StringColumn(JSON.toJSONString(columnInfo)));
             // }
             index = index + 1;
         }

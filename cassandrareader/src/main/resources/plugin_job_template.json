@@ -3,9 +3,10 @@
     "parameter": {
         "username": "",
         "password": "",
-        "contactPoint":"",
-        "querySql":[],
+        "querySql":"",
+        "splitPk":"",
         "mode":"normal",
+        "allowFilter":true,
         "connection": {
             "host": "",
             "port": 9042,

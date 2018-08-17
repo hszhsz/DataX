@@ -3,10 +3,7 @@ package com.alibaba.datax.plugin.reader.cassandrareader;
 public final class Key {
 
 
-    public static final String CONTACTPOINT = "contactPoint";
-
     public final static String QUERY_SQL = "querySql";
-
 
     public final static String CONNECTION = "connection";
 
@@ -27,4 +24,9 @@ public final class Key {
     public final static String CONNECTION_DISTANCE_MAX = "distance_max";
 
     public static final String MODE = "mode";
+
+    public final static String SPLIT_PK = "splitPk";
+
+    public final static String ALLOWFILTER = "allowFilter";
+
 }

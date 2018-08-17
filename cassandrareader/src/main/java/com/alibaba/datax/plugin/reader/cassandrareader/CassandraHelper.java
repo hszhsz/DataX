@@ -5,6 +5,7 @@ import com.alibaba.datax.common.exception.DataXException;
 import com.alibaba.datax.common.util.Configuration;
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.InvalidQueryException;
+import org.apache.commons.lang3.ObjectUtils;
 
 import java.util.*;
 
@@ -17,37 +18,42 @@ import java.util.*;
  */
 public class CassandraHelper {
 
-    public static List<Configuration> split(int adviceNumber, Configuration originConfig) {
+    public static List<Configuration> split(int adviceNumber, Configuration taskConfig) {
 
         List<Configuration> configurations = new ArrayList<Configuration>();
-        List<String> querySqls = originConfig.getList(Key.QUERY_SQL, String.class);
-        if (!querySqls.isEmpty()) {
-            for (String sql : querySqls) {
-                Configuration confTmp = originConfig.clone();
-                confTmp.set(Constants.SQL, sql);
-                confTmp.remove(Key.QUERY_SQL);
-                configurations.add(confTmp);
-            }
+        String sql = taskConfig.get(Key.QUERY_SQL, String.class);
+        if (!sql.isEmpty()) {
+            buildConfigFromSql(sql, taskConfig);
+            Configuration confTmp = taskConfig.clone();
+            configurations.addAll(CassandraReaderSplitUtil.splitSqlWithPrimaryKey(confTmp, adviceNumber));
+            //configurations.add(confTmp);
         }
 
-        //TODO  根据主键范围确定每个task startkey,endkey
         return configurations;
 
     }
 
+    private static void buildConfigFromSql(String sql, Configuration taskConfig) {
+        Map<String, Object> tableInfoFromSql = CassandraHelper.splitSQL(sql.toLowerCase());
+        taskConfig.set(Constants.TABLE, tableInfoFromSql.get(Constants.TABLE));
+        taskConfig.set(Constants.KETSPACE, tableInfoFromSql.get(Constants.KETSPACE));
+        taskConfig.set(Constants.WHERE, tableInfoFromSql.get(Constants.WHERE));
+        taskConfig.set(Constants.COLUMN, tableInfoFromSql.getOrDefault(Constants.COLUMN, "*"));
+    }
+
     public static void validateConfiguration(Configuration originalConfig) {
-        // do not splitPk
-        String contactPoint = originalConfig.getString(Key.CONTACTPOINT, null);
+        Map<String, Object> connection = originalConfig.getMap(Key.CONNECTION);
+        String contactPoint = (String) connection.getOrDefault(Key.CONNECTION_HOST, null);
         if (null == contactPoint) {
             throw DataXException.asDataXException(
                     CommonErrorCode.CONFIG_ERROR,
                     "您未配置读取 cassandra 的信息.请正确配置 contactPoint 属性. ");
         }
-        List<String> querySqls = originalConfig.getList(Key.QUERY_SQL, String.class);
+        String querySqls = originalConfig.get(Key.QUERY_SQL, String.class);
         if (null == querySqls || querySqls.isEmpty()) {
             throw DataXException.asDataXException(
                     CommonErrorCode.CONFIG_ERROR,
-                    "您未配置读取 cassandra 的信息. 请正确配置 contactPoint 属性. ");
+                    "您未配置读取 cassandra 的信息. 请正确配置 sql 属性. ");
 
         }
 
@@ -85,18 +91,18 @@ public class CassandraHelper {
         }
         String keySpace = keySpaceAndTable[0];
         String table = keySpaceAndTable[1].split(" ")[0];
-        sqlMap.put(Constants.KETSPACE, keySpace);
-        sqlMap.put(Constants.TABLE, table);
+        sqlMap.put(Constants.KETSPACE, keySpace.trim());
+        sqlMap.put(Constants.TABLE, table.trim());
 
-        String selectAndCollumns = keySpaceAndAfter.substring(0, keySpaceStartIndex - 1);
-        String[] columns = selectAndCollumns.replace("select", "").trim().split(",");
-
-        Set<String> columnSet = new HashSet<String>(Arrays.asList(columns));
-        if (columns.length == 1 && columns[0].trim().equals("*")) {
-
-        } else {
-            sqlMap.put(Constants.COLUMN, columnSet);
+        String selectAndCollumns = sql.substring(0, keySpaceStartIndex - 1);
+        String columns = selectAndCollumns.replace("select", "").trim();
+        String[] wheres = sql.toLowerCase().split(Constants.WHERE);
+        if (wheres.length == 2) {
+            sqlMap.put(Constants.WHERE, wheres[1].trim().toLowerCase().replace("allow", "").replace("filtering", ""));
         }
+
+        sqlMap.put(Constants.COLUMN, columns);
+
         return sqlMap;
     }
 
@@ -108,12 +114,12 @@ public class CassandraHelper {
         Object obj = row.getObject(columnName);
         columnInfo.put("columnType", dataType.getName());
         columnInfo.put("columnName", columnName);
-        columnInfo.put("value", obj);
+        columnInfo.put("value", ObjectUtils.clone(obj)); //不clone 会出现循环引用？
         return columnInfo;
 
     }
 
-    public static Cluster initCluster(Configuration taskConfig) {
+    public static Cluster buildCluster(Configuration taskConfig) {
         Map<String, Object> connection = taskConfig.getMap(Key.CONNECTION);
         if (connection == null) {
             throw DataXException.asDataXException(
