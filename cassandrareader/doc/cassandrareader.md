@@ -7,14 +7,14 @@ ___
 
 ## 1 快速介绍
 
-CassandraReader插件实现了从Cassandra读取数据。在底层实现上，Cassandra通过JDBC连接远程Mysql数据库，并执行相应的sql语句将数据从mysql库中SELECT出来。
+CassandraReader插件实现了从Cassandra读取数据。在底层实现上，CassandraReader通过JDBC连接远程Cassandra数据库，并执行相应的sql语句将数据从mysql库中SELECT出来。
 
 **不同于其他关系型数据库，CassandraReader CQL有很多不同**
 
 ## 2 实现原理
 
-简而言之，CassandraReader通过JDBC连接器连接到远程的Cassandra数据库，并根据用户配置的信息生成查询SELECT SQL语句，然后发送到远程Cassandra数据库，并将该SQL执行返回结果使用DataX自定义的数据类型拼装为抽象的数据集，并传递给下游Writer处理。
-对于用户配置querySql信息，CassandraReader直接将其发送到Mysql数据库。
+简而言之，CassandraReader通过JDBC连接器连接到远程的Cassandra数据库，并根据用户配置的querySql信息，CassandraReader直接将其发送到Cassandral数据库，并将该SQL执行返回结果使用DataX自定义的数据类型拼装为抽象的数据集，并传递给下游Writer处理。
+
 
 
 ## 3 功能说明
