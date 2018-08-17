@@ -23,7 +23,7 @@ CassandraReader插件实现了从Cassandra读取数据。在底层实现上，Ca
 
 * 配置一个从Cassandra数据库同步抽取数据到本地的作业:
 
-```
+```json
 { "job":{
 	"content":[
 		{
