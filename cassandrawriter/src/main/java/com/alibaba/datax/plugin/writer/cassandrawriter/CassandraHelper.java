@@ -282,6 +282,7 @@ public class CassandraHelper {
         if(key==null){
             return null;
         }
+
         TableMetadata tableMetadata = key.getTable(table);
         if(tableMetadata==null){
             return null;
@@ -340,12 +341,12 @@ public class CassandraHelper {
             sb.append("USING ttl ");
             sb.append(ttl);
         }
+        LOG.info("sql {}",sb.toString());
         return sb.toString();
     }
 
     public void insertBatch(List<Record> recordList) {
         PreparedStatement statement = session.prepare(insertSql);
-        BoundStatement boundStatement = new BoundStatement(statement);
         BatchStatement batchStmt = new BatchStatement();
 
         for (Record record : recordList) {
@@ -381,10 +382,9 @@ public class CassandraHelper {
                     }
                 }
             }
-
+            BoundStatement boundStatement = new BoundStatement(statement);
             batchStmt.add(boundStatement.bind(obj));
         }
-
 
         session.execute(batchStmt);
     }
