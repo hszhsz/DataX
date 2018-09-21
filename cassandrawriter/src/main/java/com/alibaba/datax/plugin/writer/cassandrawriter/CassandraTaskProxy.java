@@ -45,11 +45,11 @@ public class CassandraTaskProxy {
         List<Record> recordList = new ArrayList<Record>(batchSize);
         try {
             while ((record = lineReceiver.getFromReader()) != null) {
-                if(needCreateTable){
-                    cassandraHelper.createTable(record);
-                    cassandraHelper.initTableMeta(); //cassandraHelper 需要重新初始化tablemeta info
-                    needCreateTable=false;
-                }
+//                if(needCreateTable){
+//                    cassandraHelper.createTable(record);
+//                    cassandraHelper.initTableMeta(); //cassandraHelper 需要重新初始化tablemeta info
+//                    needCreateTable=false;
+//                }
 
                 recordList.add(record);
                 try {

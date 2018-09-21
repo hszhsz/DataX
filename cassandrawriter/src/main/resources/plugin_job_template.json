@@ -1,8 +1,8 @@
 {
     "name": "cassandrawriter",
     "parameter": {
-        "column": [],
-        "primary_key": [],
+  //      "column": [],
+  //      "primary_key": [],
         "table": "",
         "keyspace": {
             "name": "",
@@ -23,8 +23,8 @@
                 "distance_min": 1,
                 "distance_max": 2
             },
-        "truncate": false,
-        "createKeySpace":false,
-        "createTable":false
+        "truncate": false
+//        "createKeySpace":false,
+//        "createTable":false
     }
 }

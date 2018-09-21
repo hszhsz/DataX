@@ -64,8 +64,12 @@ public class CassandraHelper {
      */
     public static void truncateTable(Configuration originalConfig) {
 
-        Session session =buildCluster(originalConfig).connect();
-        session.execute("truncate "+originalConfig.get(Constants.KEYSPACE)+"."+originalConfig.get(Constants.TABLE));
+        Session session = buildCluster(originalConfig).connect();
+        try{
+        session.execute("truncate " + originalConfig.get(Constants.KEYSPACE) + "." + originalConfig.get(Constants.TABLE));
+    }catch (Exception e){
+            LOG.error("truncateTable error {}",e.getMessage());
+        }
         session.close();
     }
 
@@ -118,7 +122,6 @@ public class CassandraHelper {
     }
 
     private void init() {
-        column = config.getList(Constants.COLUMN);
         table = config.getString(Constants.TABLE);
         keyspace = config.getMap(Constants.KEYSPACE);
         connection = config.getMap(Constants.CONNECTION);
@@ -126,6 +129,7 @@ public class CassandraHelper {
 
     }
     public void initTableMeta(){
+        column = config.getList(Constants.COLUMN);
         columnListFromTable = buildColumnList();
         columnTypeMap = buildColumnMap();
         insertSql = buildSql();
@@ -167,7 +171,11 @@ public class CassandraHelper {
                 .append((Integer) keyspace.getOrDefault(Constants.KEYSPACE_REPLICATION_FACTOR,1))
                 .append("'}");
 
-        session.execute(sb.toString());
+        try {
+            session.execute(sb.toString());
+        }catch (Exception e){
+            LOG.error("create createKeyspace error {}",e.getMessage());
+        }
         session.close();
     }
 
@@ -270,12 +278,22 @@ public class CassandraHelper {
 
     public List<ColumnMetadata> buildColumnList() {
         Cluster clusterTmp = buildCluster(this.config);
-        TableMetadata tableMetadata = clusterTmp.getMetadata().getKeyspace((String) keyspace.get(Constants.KEYSPACE_NAME)).getTable(table);
+        KeyspaceMetadata key = clusterTmp.getMetadata().getKeyspace((String) keyspace.get(Constants.KEYSPACE_NAME));
+        if(key==null){
+            return null;
+        }
+        TableMetadata tableMetadata = key.getTable(table);
+        if(tableMetadata==null){
+            return null;
+        }
         List<ColumnMetadata> columns = tableMetadata.getColumns();//可能会很大很大
         return columns;
     }
 
     public Map<String, DataType> buildColumnMap() {
+        if(columnListFromTable==null){
+            return null;
+        }
         List<ColumnMetadata> columns = columnListFromTable;//可能会很大很大
         HashMap columnMap = new HashMap(columns.size());
         columns.stream().forEach(x -> {
@@ -286,7 +304,9 @@ public class CassandraHelper {
 
     public String buildSql() {
         StringBuilder sb = new StringBuilder();
-
+        if(columnListFromTable==null||columnListFromTable.isEmpty()){
+            return null;
+        }
         List<Object> columns = new ArrayList<>();
         if (!column.isEmpty()) {
             columns = column;
