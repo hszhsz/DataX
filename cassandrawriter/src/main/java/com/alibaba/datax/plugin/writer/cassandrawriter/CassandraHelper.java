@@ -129,7 +129,10 @@ public class CassandraHelper {
         Map<String, Object> keyspace = originalConfig.getMap(Constants.KEYSPACE);
         String c="SimpleStrategy";
         if(keyspace.containsKey(Constants.KEYSPACE_CLASS)) {
-            c = (String) keyspace.get(Constants.KEYSPACE_CLASS);
+           String cc = (String) keyspace.get(Constants.KEYSPACE_CLASS);
+           if(cc!=null&&!cc.isEmpty()){
+               c=cc;
+           }
         }
 
         Session session = buildCluster(originalConfig).connect();
