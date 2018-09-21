@@ -65,10 +65,10 @@ public class CassandraHelper {
     public static void truncateTable(Configuration originalConfig) {
 
         Session session = buildCluster(originalConfig).connect();
-        try{
-        session.execute("truncate " + originalConfig.get(Constants.KEYSPACE) + "." + originalConfig.get(Constants.TABLE));
-    }catch (Exception e){
-            LOG.error("truncateTable error {}",e.getMessage());
+        try {
+            session.execute("truncate " + originalConfig.get(Constants.KEYSPACE) + "." + originalConfig.get(Constants.TABLE));
+        } catch (Exception e) {
+            LOG.error("truncateTable error {}", e.getMessage());
         }
         session.close();
     }
@@ -121,6 +121,29 @@ public class CassandraHelper {
         return result;
     }
 
+    /**
+     * 创建键空间
+     */
+    public static void createKeyspace(Configuration originalConfig) {
+        StringBuilder sb = new StringBuilder();
+        Map<String, Object> keyspace = originalConfig.getMap(Constants.KEYSPACE);
+        Session session = buildCluster(originalConfig).connect();
+        sb.append("CREATE KEYSPACE if not exists ")
+                .append((String) keyspace.get(Constants.KEYSPACE_NAME))
+                .append(" WITH replication = {'class': '")
+                .append((String) keyspace.getOrDefault(Constants.KEYSPACE_CLASS, "SimpleStrategy"))
+                .append("', 'replication_factor': '")
+                .append((Integer) keyspace.getOrDefault(Constants.KEYSPACE_REPLICATION_FACTOR, 1))
+                .append("'}");
+
+        try {
+            session.execute(sb.toString());
+        } catch (Exception e) {
+            LOG.error("create createKeyspace error {}", e.getMessage());
+        }
+        session.close();
+    }
+
     private void init() {
         table = config.getString(Constants.TABLE);
         keyspace = config.getMap(Constants.KEYSPACE);
@@ -128,7 +151,8 @@ public class CassandraHelper {
         primaryKey = config.getList(Constants.PRIMARY_KEY);
 
     }
-    public void initTableMeta(){
+
+    public void initTableMeta() {
         column = config.getList(Constants.COLUMN);
         columnListFromTable = buildColumnList();
         columnTypeMap = buildColumnMap();
@@ -157,32 +181,9 @@ public class CassandraHelper {
     }
 
     /**
-     * 创建键空间
-     */
-    public static void createKeyspace(Configuration originalConfig) {
-        StringBuilder sb = new StringBuilder();
-         Map<String, Object> keyspace = originalConfig.getMap(Constants.KEYSPACE);
-        Session session=buildCluster(originalConfig).connect();
-        sb.append("CREATE KEYSPACE if not exists ")
-                .append((String) keyspace.get(Constants.KEYSPACE_NAME))
-                .append(" WITH replication = {'class': '")
-                .append((String) keyspace.getOrDefault(Constants.KEYSPACE_CLASS,"SimpleStrategy"))
-                .append("', 'replication_factor': '")
-                .append((Integer) keyspace.getOrDefault(Constants.KEYSPACE_REPLICATION_FACTOR,1))
-                .append("'}");
-
-        try {
-            session.execute(sb.toString());
-        }catch (Exception e){
-            LOG.error("create createKeyspace error {}",e.getMessage());
-        }
-        session.close();
-    }
-
-    /**
      * 创建表
      */
-    public  void createTable(Record record) {
+    public void createTable(Record record) {
         StringBuilder sb = new StringBuilder();
         sb.append("CREATE TABLE if not exists ")
                 .append((String) keyspace.get(Constants.KEYSPACE_NAME))
@@ -195,8 +196,8 @@ public class CassandraHelper {
                     .append(" ").append(DataTypeConverter(record.getColumn(i).getType().name()))
                     .append(",");
         }
-        if(primaryKey.isEmpty()){
-            throw DataXException.asDataXException(CassandraWriterErrorCode.CREATE_CASSANDRA_ERROR,"primaryKey is cannot be empty" );
+        if (primaryKey.isEmpty()) {
+            throw DataXException.asDataXException(CassandraWriterErrorCode.CREATE_CASSANDRA_ERROR, "primaryKey is cannot be empty");
         }
         sb.append("PRIMARY KEY (")
                 .append(primaryKey.toString()
@@ -279,12 +280,12 @@ public class CassandraHelper {
     public List<ColumnMetadata> buildColumnList() {
         Cluster clusterTmp = buildCluster(this.config);
         KeyspaceMetadata key = clusterTmp.getMetadata().getKeyspace((String) keyspace.get(Constants.KEYSPACE_NAME));
-        if(key==null){
+        if (key == null) {
             return null;
         }
 
         TableMetadata tableMetadata = key.getTable(table);
-        if(tableMetadata==null){
+        if (tableMetadata == null) {
             return null;
         }
         List<ColumnMetadata> columns = tableMetadata.getColumns();//可能会很大很大
@@ -292,7 +293,7 @@ public class CassandraHelper {
     }
 
     public Map<String, DataType> buildColumnMap() {
-        if(columnListFromTable==null){
+        if (columnListFromTable == null) {
             return null;
         }
         List<ColumnMetadata> columns = columnListFromTable;//可能会很大很大
@@ -305,7 +306,7 @@ public class CassandraHelper {
 
     public String buildSql() {
         StringBuilder sb = new StringBuilder();
-        if(columnListFromTable==null||columnListFromTable.isEmpty()){
+        if (columnListFromTable == null || columnListFromTable.isEmpty()) {
             return null;
         }
         List<Object> columns = new ArrayList<>();
@@ -341,7 +342,7 @@ public class CassandraHelper {
             sb.append("USING ttl ");
             sb.append(ttl);
         }
-        LOG.info("sql {}",sb.toString());
+        LOG.info("sql {}", sb.toString());
         return sb.toString();
     }
 

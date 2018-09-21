@@ -54,5 +54,4 @@ public final class Constants {
     public static final String CREATEKETSPACE = "createKeySpace";
 
 
-
 }

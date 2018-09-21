@@ -27,12 +27,13 @@ public class CassandraTaskProxy {
     private int batchSize;
     private Configuration configuration;
     private Boolean needCreateTable;
+
     public CassandraTaskProxy(Configuration originalConfig) {
         cassandraHelper = new CassandraHelper(originalConfig);
         batchSize = originalConfig.getInt(Constants.BATCH_SIZE, 1);
         duration = originalConfig.getInt(Constants.DURATION, 1);
-        configuration=originalConfig;
-        needCreateTable=originalConfig.getBool(Constants.CREATETABLE);
+        configuration = originalConfig;
+        needCreateTable = originalConfig.getBool(Constants.CREATETABLE);
 
     }
 
@@ -45,11 +46,11 @@ public class CassandraTaskProxy {
         List<Record> recordList = new ArrayList<Record>(batchSize);
         try {
             while ((record = lineReceiver.getFromReader()) != null) {
-//                if(needCreateTable){
-//                    cassandraHelper.createTable(record);
-//                    cassandraHelper.initTableMeta(); //cassandraHelper 需要重新初始化tablemeta info
-//                    needCreateTable=false;
-//                }
+                if (needCreateTable) {
+                    cassandraHelper.createTable(record);
+                    needCreateTable = false;
+                    cassandraHelper.initTableMeta(); //cassandraHelper 需要重新初始化tablemeta info
+                }
 
                 recordList.add(record);
                 try {
