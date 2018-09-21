@@ -25,17 +25,19 @@ public class CassandraTaskProxy {
     private Long timer = null;
     private int duration;
     private int batchSize;
-
+    private Configuration configuration;
+    private Boolean needCreateTable;
     public CassandraTaskProxy(Configuration originalConfig) {
         cassandraHelper = new CassandraHelper(originalConfig);
         batchSize = originalConfig.getInt(Constants.BATCH_SIZE, 1);
         duration = originalConfig.getInt(Constants.DURATION, 1);
+        configuration=originalConfig;
+        needCreateTable=originalConfig.getBool(Constants.CREATETABLE);
 
     }
 
     public void init() {
         timer = System.currentTimeMillis();
-        //  cassandraHelper.createKeyspace();
     }
 
     public void startWriter(RecordReceiver lineReceiver, TaskPluginCollector taskPluginCollector) {
@@ -43,6 +45,12 @@ public class CassandraTaskProxy {
         List<Record> recordList = new ArrayList<Record>(batchSize);
         try {
             while ((record = lineReceiver.getFromReader()) != null) {
+                if(needCreateTable){
+                    cassandraHelper.createTable(record);
+                    cassandraHelper.initTableMeta(); //cassandraHelper 需要重新初始化tablemeta info
+                    needCreateTable=false;
+                }
+
                 recordList.add(record);
                 try {
                     // cassandraHelper.createTable(record);

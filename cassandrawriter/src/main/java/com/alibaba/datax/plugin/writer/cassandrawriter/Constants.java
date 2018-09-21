@@ -49,5 +49,10 @@ public final class Constants {
 
     public static final String TTL = "ttl";
 
+    public static final String CREATETABLE = "createTable";
+
+    public static final String CREATEKETSPACE = "createKeySpace";
+
+
 
 }

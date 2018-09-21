@@ -23,6 +23,8 @@
                 "distance_min": 1,
                 "distance_max": 2
             },
-        "truncate": false
+        "truncate": false,
+        "createKeySpace":false,
+        "createTable":false
     }
 }

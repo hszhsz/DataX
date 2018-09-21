@@ -27,10 +27,16 @@ public class CassandraWriter extends Writer {
         @Override
         public void prepare() {
             CassandraHelper.prepare(this.originConfig);
+            if(originConfig.getBool(Constants.CREATEKETSPACE,false)){
+                CassandraHelper.createKeyspace(originConfig);
+            }
+
             Boolean truncate = originConfig.getBool(Constants.TRUNCATE, false);
             if (truncate) {
                 CassandraHelper.truncateTable(this.originConfig);
             }
+
+
         }
 
         @Override

@@ -2,6 +2,7 @@ package com.alibaba.datax.plugin.writer.cassandrawriter;
 
 import com.alibaba.datax.common.element.Column;
 import com.alibaba.datax.common.element.Record;
+import com.alibaba.datax.common.exception.DataXException;
 import com.alibaba.datax.common.util.Configuration;
 import com.alibaba.fastjson.JSON;
 import com.datastax.driver.core.*;
@@ -16,6 +17,7 @@ import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.stream.Collectors;
+
 
 /**
  * @ClassName CassandraHelper
@@ -45,7 +47,7 @@ public class CassandraHelper {
         this.config = originalConfig;
         init();
         connect();
-
+        initTableMeta();
     }
 
     /**
@@ -62,6 +64,9 @@ public class CassandraHelper {
      */
     public static void truncateTable(Configuration originalConfig) {
 
+        Session session =buildCluster(originalConfig).connect();
+        session.execute("truncate "+originalConfig.get(Constants.KEYSPACE)+"."+originalConfig.get(Constants.TABLE));
+        session.close();
     }
 
     public static void prepare(Configuration originConfig) {
@@ -120,6 +125,11 @@ public class CassandraHelper {
         primaryKey = config.getList(Constants.PRIMARY_KEY);
 
     }
+    public void initTableMeta(){
+        columnListFromTable = buildColumnList();
+        columnTypeMap = buildColumnMap();
+        insertSql = buildSql();
+    }
 
     public void connect() {
         PoolingOptions poolingOptions = new PoolingOptions();
@@ -140,32 +150,31 @@ public class CassandraHelper {
         // 建立连接
         session = cluster.connect();
 
-        columnListFromTable = buildColumnList();
-        columnTypeMap = buildColumnMap();
-        insertSql = buildSql();
-
     }
 
     /**
      * 创建键空间
      */
-    public void createKeyspace() {
+    public static void createKeyspace(Configuration originalConfig) {
         StringBuilder sb = new StringBuilder();
+         Map<String, Object> keyspace = originalConfig.getMap(Constants.KEYSPACE);
+        Session session=buildCluster(originalConfig).connect();
         sb.append("CREATE KEYSPACE if not exists ")
                 .append((String) keyspace.get(Constants.KEYSPACE_NAME))
                 .append(" WITH replication = {'class': '")
-                .append((String) keyspace.get(Constants.KEYSPACE_CLASS))
+                .append((String) keyspace.getOrDefault(Constants.KEYSPACE_CLASS,"SimpleStrategy"))
                 .append("', 'replication_factor': '")
-                .append((Integer) keyspace.get(Constants.KEYSPACE_REPLICATION_FACTOR))
+                .append((Integer) keyspace.getOrDefault(Constants.KEYSPACE_REPLICATION_FACTOR,1))
                 .append("'}");
 
         session.execute(sb.toString());
+        session.close();
     }
 
     /**
      * 创建表
      */
-    public void createTable(Record record) {
+    public  void createTable(Record record) {
         StringBuilder sb = new StringBuilder();
         sb.append("CREATE TABLE if not exists ")
                 .append((String) keyspace.get(Constants.KEYSPACE_NAME))
@@ -177,6 +186,9 @@ public class CassandraHelper {
             sb.append(column.get(i))
                     .append(" ").append(DataTypeConverter(record.getColumn(i).getType().name()))
                     .append(",");
+        }
+        if(primaryKey.isEmpty()){
+            throw DataXException.asDataXException(CassandraWriterErrorCode.CREATE_CASSANDRA_ERROR,"primaryKey is cannot be empty" );
         }
         sb.append("PRIMARY KEY (")
                 .append(primaryKey.toString()
