@@ -36,7 +36,6 @@ public class CassandraHelper {
     private Map<String, DataType> columnTypeMap = null;
     private List<Object> primaryKey = null;
     private String insertSql = "";
-    private Gson gson = new Gson();
     private String table = "";
 
     private Map<String, Object> keyspace = new HashMap<String, Object>();
@@ -121,20 +120,28 @@ public class CassandraHelper {
         return result;
     }
 
+
     /**
      * 创建键空间
      */
     public static void createKeyspace(Configuration originalConfig) {
         StringBuilder sb = new StringBuilder();
         Map<String, Object> keyspace = originalConfig.getMap(Constants.KEYSPACE);
+        String c="SimpleStrategy";
+        if(keyspace.containsKey(Constants.KEYSPACE_CLASS)) {
+            c = (String) keyspace.get(Constants.KEYSPACE_CLASS);
+        }
+
         Session session = buildCluster(originalConfig).connect();
         sb.append("CREATE KEYSPACE if not exists ")
                 .append((String) keyspace.get(Constants.KEYSPACE_NAME))
                 .append(" WITH replication = {'class': '")
-                .append((String) keyspace.getOrDefault(Constants.KEYSPACE_CLASS, "SimpleStrategy"))
+                .append(c)
                 .append("', 'replication_factor': '")
                 .append((Integer) keyspace.getOrDefault(Constants.KEYSPACE_REPLICATION_FACTOR, 1))
                 .append("'}");
+
+        LOG.info("createKeyspace sql : {}",sb.toString());
 
         try {
             session.execute(sb.toString());
@@ -205,6 +212,7 @@ public class CassandraHelper {
                         .replace("]", "")
                         .replace("\"", ""))
                 .append("))");
+        LOG.info("createKeyspace sql : {}",sb.toString());
 
         session.execute(sb.toString());
     }
@@ -342,7 +350,7 @@ public class CassandraHelper {
             sb.append("USING ttl ");
             sb.append(ttl);
         }
-        LOG.info("sql {}", sb.toString());
+        LOG.info("insert sql :{}", sb.toString());
         return sb.toString();
     }
 
