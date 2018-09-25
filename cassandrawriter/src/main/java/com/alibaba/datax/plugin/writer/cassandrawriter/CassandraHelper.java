@@ -7,7 +7,6 @@ import com.alibaba.datax.common.util.Configuration;
 import com.alibaba.fastjson.JSON;
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.InvalidQueryException;
-import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,13 +17,6 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.stream.Collectors;
 
-
-/**
- * @ClassName CassandraHelper
- * @Description CassandraWriter工具类
- * @Author heshaozhong
- * @Date 下午8:06 2018/8/13
- */
 public class CassandraHelper {
     private static final Logger LOG = LoggerFactory.getLogger(CassandraHelper.class);
     List<ColumnMetadata> columnListFromTable = null;
@@ -74,7 +66,7 @@ public class CassandraHelper {
 
     public static void prepare(Configuration originConfig) {
         List<String> preSqls = originConfig.getList(Constants.PRESQL, String.class);
-        if (preSqls.isEmpty())
+        if (preSqls == null || preSqls.isEmpty())
             return;
         Cluster clusterTmp = buildCluster(originConfig);
         Session session = clusterTmp.newSession();
@@ -127,12 +119,12 @@ public class CassandraHelper {
     public static void createKeyspace(Configuration originalConfig) {
         StringBuilder sb = new StringBuilder();
         Map<String, Object> keyspace = originalConfig.getMap(Constants.KEYSPACE);
-        String c="SimpleStrategy";
-        if(keyspace.containsKey(Constants.KEYSPACE_CLASS)) {
-           String cc = (String) keyspace.get(Constants.KEYSPACE_CLASS);
-           if(cc!=null&&!cc.isEmpty()){
-               c=cc;
-           }
+        String c = "SimpleStrategy";
+        if (keyspace.containsKey(Constants.KEYSPACE_CLASS)) {
+            String cc = (String) keyspace.get(Constants.KEYSPACE_CLASS);
+            if (cc != null && !cc.isEmpty()) {
+                c = cc;
+            }
         }
 
         Session session = buildCluster(originalConfig).connect();
@@ -144,7 +136,7 @@ public class CassandraHelper {
                 .append((Integer) keyspace.getOrDefault(Constants.KEYSPACE_REPLICATION_FACTOR, 1))
                 .append("'}");
 
-        LOG.info("createKeyspace sql : {}",sb.toString());
+        LOG.info("createKeyspace sql : {}", sb.toString());
 
         try {
             session.execute(sb.toString());
@@ -172,10 +164,10 @@ public class CassandraHelper {
     public void connect() {
         PoolingOptions poolingOptions = new PoolingOptions();
         // 表示和集群里的机器至少有2个连接 最多有4个连接
-        poolingOptions.setCoreConnectionsPerHost(HostDistance.LOCAL, (Integer) connection.get(Constants.CONNECTION_LOCAL_MIN))
-                .setMaxConnectionsPerHost(HostDistance.LOCAL, (Integer) connection.get(Constants.CONNECTION_LOCAL_MAX))
-                .setCoreConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.get(Constants.CONNECTION_DISTANCE_MIN))
-                .setMaxConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.get(Constants.CONNECTION_DISTANCE_MAX));
+        poolingOptions.setCoreConnectionsPerHost(HostDistance.LOCAL, (Integer) connection.getOrDefault(Constants.CONNECTION_LOCAL_MIN,1))
+                .setMaxConnectionsPerHost(HostDistance.LOCAL, (Integer) connection.getOrDefault(Constants.CONNECTION_LOCAL_MAX,2))
+                .setCoreConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.getOrDefault(Constants.CONNECTION_DISTANCE_MIN,1))
+                .setMaxConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.getOrDefault(Constants.CONNECTION_DISTANCE_MAX,2));
 
         // addContactPoints:cassandra节点ip withPort:cassandra节点端口 默认9042
         // withCredentials:cassandra用户名密码 如果cassandra.yaml里authenticator：AllowAllAuthenticator 可以不用配置
@@ -215,7 +207,7 @@ public class CassandraHelper {
                         .replace("]", "")
                         .replace("\"", ""))
                 .append("))");
-        LOG.info("createKeyspace sql : {}",sb.toString());
+        LOG.info("createKeyspace sql : {}", sb.toString());
 
         session.execute(sb.toString());
     }
