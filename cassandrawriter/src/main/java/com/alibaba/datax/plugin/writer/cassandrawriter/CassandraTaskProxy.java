@@ -33,7 +33,7 @@ public class CassandraTaskProxy {
         batchSize = originalConfig.getInt(Constants.BATCH_SIZE, 1);
         duration = originalConfig.getInt(Constants.DURATION, 1);
         configuration = originalConfig;
-        needCreateTable = originalConfig.getBool(Constants.CREATETABLE);
+        needCreateTable = originalConfig.getBool(Constants.CREATETABLE,false);
 
     }
 
