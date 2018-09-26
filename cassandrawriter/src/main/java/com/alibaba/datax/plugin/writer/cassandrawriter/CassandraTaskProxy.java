@@ -64,8 +64,11 @@ public class CassandraTaskProxy {
                 } catch (Exception e) {
                     LOG.error(String.format("record is empty, 您配置nullMode为[skip],将会忽略这条记录,record[%s]", record.toString()));
                     taskPluginCollector.collectDirtyRecord(record, e);
-                    continue;
                 }
+            }
+            if(!recordList.isEmpty()) {
+                cassandraHelper.insertBatch(recordList);
+                recordList.clear();
             }
         } catch (Exception e) {
             throw DataXException.asDataXException(CassandraWriterErrorCode.INSERT_CASSANDRA_ERROR, e);
