@@ -349,6 +349,10 @@ public class CassandraHelper {
         return sb.toString();
     }
 
+    public void insert(String  sql) {
+        session.execute(sql);
+
+    }
     public void insertBatch(List<Record> recordList) {
         PreparedStatement statement = session.prepare(insertSql);
         BatchStatement batchStmt = new BatchStatement();
