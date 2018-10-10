@@ -54,11 +54,15 @@ public class CassandraTaskProxy {
                     cassandraHelper.initTableMeta(); //cassandraHelper 需要重新初始化tablemeta info
                 }
                 if(batchSize==1){
-                    insert(record);
+                    try {
+                        insert(record);
+                    }catch (Exception e){
+                        LOG.error(String.format("insert error ,record[%s]", record.toString()));
+                        taskPluginCollector.collectDirtyRecord(record, e);
+                    }
                 }else {
                     recordList.add(record);
                     try {
-                        // cassandraHelper.createTable(record);
                         if (recordList.size() >= batchSize || System.currentTimeMillis() - timer > duration * 1000) {
                             cassandraHelper.insertBatch(recordList);
                             recordList.clear();
@@ -67,7 +71,7 @@ public class CassandraTaskProxy {
                         //cassandraHelper.insert(record);
                     } catch (Exception e) {
                         LOG.error(String.format("record is empty, 您配置nullMode为[skip],将会忽略这条记录,record[%s]", record.toString()));
-                        taskPluginCollector.collectDirtyRecord(record, e);
+                        recordList.forEach(x-> taskPluginCollector.collectDirtyRecord(x, e));
                     }
                 }
             }
@@ -76,7 +80,9 @@ public class CassandraTaskProxy {
                 recordList.clear();
             }
         } catch (Exception e) {
+
             throw DataXException.asDataXException(CassandraWriterErrorCode.INSERT_CASSANDRA_ERROR, e);
+
         } finally {
             if (!recordList.isEmpty()) {
                 cassandraHelper.insertBatch(recordList);
@@ -90,6 +96,7 @@ public class CassandraTaskProxy {
     public void close() {
         cassandraHelper.close();
     }
+
     public void insert(Record record)
     {
         StringBuilder sb = new StringBuilder();
@@ -111,16 +118,37 @@ public class CassandraTaskProxy {
 
         for(int j = 0; j< record.getColumnNumber(); j++ ) {
             Column column = record.getColumn(j);
-            switch (column.getType()) {
-                case INT: sb.append(column.asBigInteger()); break;
-                case BOOL: sb.append(column.asBoolean()); break;
-                case DATE: sb.append(column.asDate()); break;
-                case LONG: sb.append(column.asLong()); break;
-                case BYTES: sb.append("'").append(column.asBytes().toString()).append("'"); break;
-                case DOUBLE: sb.append(column.asDouble()); break;
-                case STRING: sb.append("'").append(column.asString()).append("'"); break;
-                case NULL:
-                case BAD: break;
+            if(column.getRawData()==null){
+                sb.append(column.getRawData());
+            }else {
+                switch (column.getType()) {
+                    case INT:
+                        sb.append(column.asBigInteger());
+                        break;
+                    case BOOL:
+                        sb.append(column.asBoolean());
+                        break;
+                    case DATE:
+                        sb.append(column.asLong());
+                        break;
+                    case LONG:
+                        sb.append(column.asLong());
+                        break;
+                    case BYTES:
+                        if (column.asBytes() == null) sb.append(column.asBytes());
+                        else sb.append("\"").append(column.asBytes().toString()).append("\"");
+                        break;
+                    case DOUBLE:
+                        sb.append(column.asDouble());
+                        break;
+                    case STRING:
+                        if (column.asString() == null) sb.append(column.asString());
+                        else sb.append("'").append(column.asString().replace("'","" ).replace("\"","" ).replace(","," ")).append("'");
+                        break;
+                    case NULL:
+                    case BAD:
+                        break;
+                }
             }
             if(j != (record.getColumnNumber() -1)) {
                 sb.append(",");
@@ -128,8 +156,12 @@ public class CassandraTaskProxy {
         }
 
         sb.append(" )");
-
-        cassandraHelper.insert(sb.toString());
+        try {
+            cassandraHelper.insert(sb.toString());
+        }catch (Exception e){
+            LOG.error("insert error sql {}, error {}",sb.toString(),e.getMessage());
+            throw  e;
+        }
     }
 
 

@@ -159,6 +159,10 @@ public class CassandraHelper {
         columnListFromTable = buildColumnList();
         columnTypeMap = buildColumnMap();
         insertSql = buildSql();
+        LOG.info("columnListFromTable {}", columnListFromTable);
+        LOG.info("columnTypeMap {}", columnTypeMap);
+        LOG.info("insertSql {}", insertSql);
+
     }
 
     public void connect() {
@@ -345,7 +349,6 @@ public class CassandraHelper {
             sb.append("USING ttl ");
             sb.append(ttl);
         }
-        LOG.info("insert sql :{}", sb.toString());
         return sb.toString();
     }
 
@@ -370,10 +373,10 @@ public class CassandraHelper {
                         obj[i] = null;
                     } else {
                         try {
-                            buildValue(columnTypeMap.get((String) colObj), record, i, obj);
+                            buildValue(columnTypeMap.get(((String) colObj).trim().replace("\"","")), record, i, obj);
                         } catch (Exception e) {
-
-                            LOG.error("buildColumnValue fail ,record:" + record.toString() + "" + e.getMessage() + "");
+                            e.printStackTrace();
+                            LOG.error("buildColumnValue fail ,record:" + record.toString() + "" + e.getCause() + "");
                             break;
                         }
                     }
@@ -402,10 +405,11 @@ public class CassandraHelper {
         Column col = record.getColumn(i);
 
         if (col == null || col.getRawData() == null) {
+            obj[i]=null;
             return;
         }
         //obj[i]=col.asBigInteger().intValue();
-        List<DataType> typeArguments = colType.getTypeArguments();
+        LOG.info("colType {}", colType);
         switch (colType.getName()) {
             case INT:
                 BigInteger bigInteger = col.asBigInteger();
