@@ -404,12 +404,12 @@ public class CassandraHelper {
 
         Column col = record.getColumn(i);
 
-        if (col == null || col.getRawData() == null) {
+        if (col == null || col.getRawData() == null||colType==null) {
             obj[i]=null;
             return;
         }
         //obj[i]=col.asBigInteger().intValue();
-        LOG.info("colType {}", colType);
+
         switch (colType.getName()) {
             case INT:
                 BigInteger bigInteger = col.asBigInteger();
