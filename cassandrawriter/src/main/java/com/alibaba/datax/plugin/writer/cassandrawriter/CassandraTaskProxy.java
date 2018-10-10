@@ -136,7 +136,7 @@ public class CassandraTaskProxy {
                         break;
                     case BYTES:
                         if (column.asBytes() == null) sb.append(column.asBytes());
-                        else sb.append("\"").append(column.asBytes().toString()).append("\"");
+                        else sb.append("\'").append(column.asBytes().toString()).append("\'");
                         break;
                     case DOUBLE:
                         sb.append(column.asDouble());
