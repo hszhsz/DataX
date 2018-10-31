@@ -29,6 +29,8 @@ public class CassandraHelper {
     private List<Object> primaryKey = null;
     private String insertSql = "";
     private String table = "";
+    PreparedStatement statement;
+    BoundStatement boundStatement;
 
     private Map<String, Object> keyspace = new HashMap<String, Object>();
 
@@ -159,6 +161,7 @@ public class CassandraHelper {
         columnListFromTable = buildColumnList();
         columnTypeMap = buildColumnMap();
         insertSql = buildSql();
+        statement =  session.prepare(insertSql);
         LOG.info("columnListFromTable {}", columnListFromTable);
         LOG.info("columnTypeMap {}", columnTypeMap);
         LOG.info("insertSql {}", insertSql);
@@ -357,9 +360,8 @@ public class CassandraHelper {
 
     }
     public void insertBatch(List<Record> recordList) {
-        PreparedStatement statement = session.prepare(insertSql);
+        boundStatement  = new BoundStatement(statement);
         BatchStatement batchStmt = new BatchStatement();
-
         for (Record record : recordList) {
             Object[] obj;
             int number = record.getColumnNumber();
@@ -393,7 +395,6 @@ public class CassandraHelper {
                     }
                 }
             }
-            BoundStatement boundStatement = new BoundStatement(statement);
             batchStmt.add(boundStatement.bind(obj));
         }
 
