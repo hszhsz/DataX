@@ -30,7 +30,7 @@ public class CassandraHelper {
     private String insertSql = "";
     private String table = "";
     PreparedStatement statement;
-    BoundStatement boundStatement;
+//    BoundStatement boundStatement;
 
     private Map<String, Object> keyspace = new HashMap<String, Object>();
 
@@ -360,8 +360,8 @@ public class CassandraHelper {
 
     }
     public void insertBatch(List<Record> recordList) {
-        boundStatement  = new BoundStatement(statement);
         BatchStatement batchStmt = new BatchStatement();
+        List<BoundStatement> boundStatementList=new ArrayList<>(recordList.size());
         for (Record record : recordList) {
             Object[] obj;
             int number = record.getColumnNumber();
@@ -395,8 +395,10 @@ public class CassandraHelper {
                     }
                 }
             }
-            batchStmt.add(boundStatement.bind(obj));
+            BoundStatement boundStatement  = new BoundStatement(statement);
+            boundStatementList.add(boundStatement.bind(obj));
         }
+        batchStmt.addAll(boundStatementList);
 
         session.execute(batchStmt);
     }
