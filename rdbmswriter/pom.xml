@@ -24,13 +24,11 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
-
+               <!--
 		<dependency>
 			<groupId>com.dm</groupId>
 			<artifactId>dm</artifactId>
 			<version>16</version>
-			<scope>system</scope>
-			<systemPath>${basedir}/src/main/libs/Dm7JdbcDriver16.jar</systemPath>
 		</dependency>
 		<dependency>
             <groupId>com.sybase</groupId>
@@ -46,7 +44,7 @@
             <scope>system</scope>
             <systemPath>${basedir}/src/main/libs/edb-jdbc16.jar</systemPath>
         </dependency>
-
+                  -->
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
