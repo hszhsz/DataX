@@ -17,6 +17,15 @@ import java.util.*;
  * Date: 2018/8/14
  */
 public class CassandraHelper {
+    private static Configuration config;
+    private static Cluster cluster;
+    private static Session session;
+
+    public static void init(Configuration originalConfig) {
+        cluster = CassandraHelper.buildCluster(originalConfig);//Cluster.builder().addContactPoint(contactPoint).build();
+        session = cluster.newSession();
+        config = originalConfig;
+    }
 
     public static List<Configuration> split(int adviceNumber, Configuration taskConfig) {
 
@@ -141,5 +150,18 @@ public class CassandraHelper {
                 .withCredentials((String) connection.getOrDefault(Key.CONNECTION_USERNAME, ""), (String) connection.getOrDefault(Key.CONNECTION_PASSWORD, ""))
                 .withPoolingOptions(poolingOptions).build();
         return cluster;
+    }
+
+    public static ResultSet readTable(String sql) {
+        return session.execute(sql);
+    }
+
+    public static void close() {
+        if (cluster != null) {
+            cluster.close();
+        }
+        if (session != null) {
+            session.close();
+        }
     }
 }

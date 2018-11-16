@@ -22,20 +22,18 @@ public class CassandraTaskProxy {
 
     private final static Logger LOG = LoggerFactory.getLogger(CassandraTaskProxy.class);
 
-    private CassandraHelper cassandraHelper = null;
     private Long timer = null;
     private int duration;
     private int batchSize;
     private Configuration configuration;
-    private Boolean needCreateTable;
+//    private Boolean needCreateTable;
     private List<Object> column = null;
 
     public CassandraTaskProxy(Configuration originalConfig) {
-        cassandraHelper = new CassandraHelper(originalConfig);
         batchSize = originalConfig.getInt(Constants.BATCH_SIZE, 1);
         duration = originalConfig.getInt(Constants.DURATION, 1);
         configuration = originalConfig;
-        needCreateTable = originalConfig.getBool(Constants.CREATETABLE,false);
+//        needCreateTable = originalConfig.getBool(Constants.CREATETABLE,false);
         column=configuration.getList(Constants.COLUMN);
     }
 
@@ -48,10 +46,11 @@ public class CassandraTaskProxy {
         List<Record> recordList = new ArrayList<Record>(batchSize);
         try {
             while ((record = lineReceiver.getFromReader()) != null) {
-                if (needCreateTable) {
-                    cassandraHelper.createTable(record);
-                    needCreateTable = false;
-                    cassandraHelper.initTableMeta(); //cassandraHelper 需要重新初始化tablemeta info
+                if (CassandraHelper.needCreateTable) {
+                    LOG.info("needCreateTable========:" + CassandraHelper.needCreateTable);
+                    CassandraHelper.createTable(record);
+                    CassandraHelper.needCreateTable = false;
+                    CassandraHelper.initTableMeta(); //cassandraHelper 需要重新初始化tablemeta info
                 }
                 if(batchSize==1){
                     try {
@@ -64,7 +63,7 @@ public class CassandraTaskProxy {
                     recordList.add(record);
                     try {
                         if (recordList.size() >= batchSize || System.currentTimeMillis() - timer > duration * 1000) {
-                            cassandraHelper.insertBatch(recordList);
+                            CassandraHelper.insertBatch(recordList);
                             recordList.clear();
                             timer = System.currentTimeMillis();
                         }
@@ -76,7 +75,7 @@ public class CassandraTaskProxy {
                 }
             }
             if(!recordList.isEmpty()) {
-                cassandraHelper.insertBatch(recordList);
+                CassandraHelper.insertBatch(recordList);
                 recordList.clear();
             }
         } catch (Exception e) {
@@ -85,17 +84,14 @@ public class CassandraTaskProxy {
 
         } finally {
             if (!recordList.isEmpty()) {
-                cassandraHelper.insertBatch(recordList);
+                CassandraHelper.insertBatch(recordList);
                 recordList.clear();
                 timer = System.currentTimeMillis();
             }
-            cassandraHelper.close();
         }
     }
 
-    public void close() {
-        cassandraHelper.close();
-    }
+    public void close() {}
 
     public void insert(Record record)
     {
@@ -157,7 +153,7 @@ public class CassandraTaskProxy {
 
         sb.append(" )");
         try {
-            cassandraHelper.insert(sb.toString());
+            CassandraHelper.insert(sb.toString());
         }catch (Exception e){
             LOG.error("insert error sql {}, error {}",sb.toString(),e.getMessage());
             throw  e;

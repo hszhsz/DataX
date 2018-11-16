@@ -30,24 +30,19 @@ public class CassandraReaderProxy {
     private static Logger LOG = LoggerFactory.getLogger(CassandraReaderProxy.class);
 
     private Configuration taskConfig;
-    private Cluster cluster;
-    private Session session;
 
     public CassandraReaderProxy(Configuration taskConfig) {
         this.taskConfig = taskConfig;
     }
 
-    public void init() {
-        cluster = CassandraHelper.buildCluster(taskConfig);//Cluster.builder().addContactPoint(contactPoint).build();
-        session = cluster.newSession();
-    }
+    public void init() {}
 
     public void startRead(RecordSender recordSender, TaskPluginCollector collector) {
 
         String sql = taskConfig.getNecessaryValue(Key.QUERY_SQL, CommonErrorCode.CONFIG_ERROR);
         ResultSet resultSet;
         try {
-            resultSet = session.execute(sql);
+            resultSet = CassandraHelper.readTable(sql);
         } catch (Exception e) {
             LOG.error("Exception", e);
             return;
@@ -191,12 +186,5 @@ public class CassandraReaderProxy {
         }
     }
 
-    public void close() {
-        if (session != null) {
-            session.close();
-        }
-        if (cluster != null) {
-            cluster.close();
-        }
-    }
+    public void close() {}
 }

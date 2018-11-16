@@ -22,6 +22,7 @@ public class CassandraWriter extends Writer {
         public void init() {
             this.originConfig = this.getPluginJobConf();
             CassandraHelper.validateParameter(originConfig);
+            CassandraHelper.init(originConfig);
         }
 
         @Override
@@ -29,6 +30,9 @@ public class CassandraWriter extends Writer {
             CassandraHelper.prepare(this.originConfig);
             if(originConfig.getBool(Constants.CREATEKETSPACE,false)){
                 CassandraHelper.createKeyspace(originConfig);
+            }
+            if(originConfig.getBool(Constants.CREATETABLE,false)){
+                CassandraHelper.needCreateTable = true;
             }
 
             Boolean truncate = originConfig.getBool(Constants.TRUNCATE, false);
@@ -50,7 +54,7 @@ public class CassandraWriter extends Writer {
 
         @Override
         public void destroy() {
-            // NOOP
+            CassandraHelper.close();
         }
     }
 

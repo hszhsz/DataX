@@ -26,11 +26,12 @@ public class CassandraReader extends Reader {
         public void init() {
             this.originConfig = this.getPluginJobConf();
             CassandraHelper.validateConfiguration(originConfig);
+            CassandraHelper.init(originConfig);
         }
 
         @Override
         public void destroy() {
-
+            CassandraHelper.close();
         }
     }
 

@@ -19,29 +19,25 @@ import java.util.stream.Collectors;
 
 public class CassandraHelper {
     private static final Logger LOG = LoggerFactory.getLogger(CassandraHelper.class);
-    List<ColumnMetadata> columnListFromTable = null;
-    private Cluster cluster;
-    private Session session;
-    private Configuration config = null;
-    private List<Object> column = null;
+    private static List<ColumnMetadata> columnListFromTable = null;
+    private static Cluster cluster;
+    private static Session session;
+    private static Configuration config = null;
+    private static List<Object> column = null;
+    public  static boolean needCreateTable = false;
 
-    private Map<String, DataType> columnTypeMap = null;
-    private List<Object> primaryKey = null;
-    private String insertSql = "";
-    private String table = "";
-    PreparedStatement statement;
+    private static Map<String, DataType> columnTypeMap = null;
+    private static List<Object> primaryKey = null;
+    private static String insertSql = "";
+    private static String table = "";
+    private static PreparedStatement statement;
 //    BoundStatement boundStatement;
 
-    private Map<String, Object> keyspace = new HashMap<String, Object>();
+    private static  Map<String, Object> keyspace = new HashMap<String, Object>();
 
-    private Map<String, Object> connection = new HashMap<String, Object>();
+    private static Map<String, Object> connection = new HashMap<String, Object>();
 
-    public CassandraHelper(Configuration originalConfig) {
-        this.config = originalConfig;
-        init();
-        connect();
-        initTableMeta();
-    }
+    public CassandraHelper() {}
 
     /**
      * 校验参数
@@ -148,15 +144,18 @@ public class CassandraHelper {
         session.close();
     }
 
-    private void init() {
+    public static void init(Configuration originalConfig) {
+        config = originalConfig;
         table = config.getString(Constants.TABLE);
         keyspace = config.getMap(Constants.KEYSPACE);
         connection = config.getMap(Constants.CONNECTION);
         primaryKey = config.getList(Constants.PRIMARY_KEY);
 
+        connect();
+        initTableMeta();
     }
 
-    public void initTableMeta() {
+    public static void initTableMeta() {
         column = config.getList(Constants.COLUMN);
         columnListFromTable = buildColumnList();
         columnTypeMap = buildColumnMap();
@@ -168,13 +167,13 @@ public class CassandraHelper {
 
     }
 
-    public void connect() {
+    public static void connect() {
         PoolingOptions poolingOptions = new PoolingOptions();
         // 表示和集群里的机器至少有2个连接 最多有4个连接
         poolingOptions.setCoreConnectionsPerHost(HostDistance.LOCAL, (Integer) connection.getOrDefault(Constants.CONNECTION_LOCAL_MIN,1))
-                .setMaxConnectionsPerHost(HostDistance.LOCAL, (Integer) connection.getOrDefault(Constants.CONNECTION_LOCAL_MAX,2))
+                .setMaxConnectionsPerHost(HostDistance.LOCAL, (Integer) connection.getOrDefault(Constants.CONNECTION_LOCAL_MAX,100))
                 .setCoreConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.getOrDefault(Constants.CONNECTION_DISTANCE_MIN,1))
-                .setMaxConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.getOrDefault(Constants.CONNECTION_DISTANCE_MAX,2));
+                .setMaxConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.getOrDefault(Constants.CONNECTION_DISTANCE_MAX,100));
 
         // addContactPoints:cassandra节点ip withPort:cassandra节点端口 默认9042
         // withCredentials:cassandra用户名密码 如果cassandra.yaml里authenticator：AllowAllAuthenticator 可以不用配置
@@ -192,7 +191,7 @@ public class CassandraHelper {
     /**
      * 创建表
      */
-    public void createTable(Record record) {
+    public static void createTable(Record record) {
         StringBuilder sb = new StringBuilder();
         sb.append("CREATE TABLE if not exists ")
                 .append((String) keyspace.get(Constants.KEYSPACE_NAME))
@@ -222,7 +221,7 @@ public class CassandraHelper {
     /**
      * 插入
      */
-    public void insert(Record record) {
+    public static void insert(Record record) {
         StringBuilder sb = new StringBuilder();
 
         sb.append("INSERT INTO ")
@@ -278,7 +277,7 @@ public class CassandraHelper {
         session.execute(sb.toString());
     }
 
-    public void close() {
+    public static void close() {
         if (cluster != null) {
             cluster.close();
         }
@@ -287,8 +286,8 @@ public class CassandraHelper {
         }
     }
 
-    public List<ColumnMetadata> buildColumnList() {
-        Cluster clusterTmp = buildCluster(this.config);
+    public static List<ColumnMetadata> buildColumnList() {
+        Cluster clusterTmp = buildCluster(config);
         KeyspaceMetadata key = clusterTmp.getMetadata().getKeyspace((String) keyspace.get(Constants.KEYSPACE_NAME));
         if (key == null) {
             return null;
@@ -302,7 +301,7 @@ public class CassandraHelper {
         return columns;
     }
 
-    public Map<String, DataType> buildColumnMap() {
+    public static Map<String, DataType> buildColumnMap() {
         if (columnListFromTable == null) {
             return null;
         }
@@ -314,7 +313,7 @@ public class CassandraHelper {
         return columnMap;
     }
 
-    public String buildSql() {
+    public static String buildSql() {
         StringBuilder sb = new StringBuilder();
         if (columnListFromTable == null || columnListFromTable.isEmpty()) {
             return null;
@@ -355,11 +354,11 @@ public class CassandraHelper {
         return sb.toString();
     }
 
-    public void insert(String  sql) {
+    public static void insert(String  sql) {
         session.execute(sql);
 
     }
-    public void insertBatch(List<Record> recordList) {
+    public static void insertBatch(List<Record> recordList) {
         BatchStatement batchStmt = new BatchStatement();
         List<BoundStatement> boundStatementList=new ArrayList<>(recordList.size());
         for (Record record : recordList) {
@@ -403,7 +402,7 @@ public class CassandraHelper {
         session.execute(batchStmt);
     }
 
-    private void buildValue(DataType colType, Record record, int i, Object[] obj) {
+    private static void buildValue(DataType colType, Record record, int i, Object[] obj) {
 
         Column col = record.getColumn(i);
 
@@ -525,7 +524,7 @@ public class CassandraHelper {
 
     }
 
-    public Object gsonParseObjectFromString(String s, Class classType) {
+    public static Object gsonParseObjectFromString(String s, Class classType) {
         try {
             return JSON.parseObject(s, classType);
         } catch (Exception e) {
