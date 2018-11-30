@@ -21,13 +21,13 @@ public class CassandraWriter extends Writer {
         @Override
         public void init() {
             this.originConfig = this.getPluginJobConf();
+            CassandraHelper.prepare(this.originConfig);
             CassandraHelper.validateParameter(originConfig);
             CassandraHelper.init(originConfig);
         }
 
         @Override
         public void prepare() {
-            CassandraHelper.prepare(this.originConfig);
             if(originConfig.getBool(Constants.CREATEKETSPACE,false)){
                 CassandraHelper.createKeyspace(originConfig);
             }
