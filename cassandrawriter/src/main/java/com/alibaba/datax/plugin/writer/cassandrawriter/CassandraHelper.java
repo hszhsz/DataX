@@ -17,6 +17,8 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.datastax.driver.core.PoolingOptions.DEFAULT_POOL_TIMEOUT_MILLIS;
+
 public class CassandraHelper {
     private static final Logger LOG = LoggerFactory.getLogger(CassandraHelper.class);
     private static List<ColumnMetadata> columnListFromTable = null;
@@ -24,7 +26,7 @@ public class CassandraHelper {
     private static Session session;
     private static Configuration config = null;
     private static List<Object> column = null;
-    public  static boolean needCreateTable = false;
+    public static boolean needCreateTable = false;
 
     private static Map<String, DataType> columnTypeMap = null;
     private static List<Object> primaryKey = null;
@@ -33,11 +35,12 @@ public class CassandraHelper {
     private static PreparedStatement statement;
 //    BoundStatement boundStatement;
 
-    private static  Map<String, Object> keyspace = new HashMap<String, Object>();
+    private static Map<String, Object> keyspace = new HashMap<String, Object>();
 
     private static Map<String, Object> connection = new HashMap<String, Object>();
 
-    public CassandraHelper() {}
+    public CassandraHelper() {
+    }
 
     /**
      * 校验参数
@@ -80,9 +83,22 @@ public class CassandraHelper {
     private static Cluster buildCluster(Configuration originConfig) {
         Map<String, Object> connection = originConfig.getMap(Constants.CONNECTION);
         // 表示和集群里的机器至少有2个连接 最多有4个连接
+
+        PoolingOptions poolingOptions = new PoolingOptions();
+        // 表示和集群里的机器至少有2个连接 最多有4个连接
+        poolingOptions.setCoreConnectionsPerHost(HostDistance.LOCAL, (Integer) connection.getOrDefault(Constants.CONNECTION_LOCAL_MIN, 1))
+                .setMaxConnectionsPerHost(HostDistance.LOCAL, (Integer) connection.getOrDefault(Constants.CONNECTION_LOCAL_MAX, 1))
+                .setCoreConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.getOrDefault(Constants.CONNECTION_DISTANCE_MIN, 1))
+                .setMaxConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.getOrDefault(Constants.CONNECTION_DISTANCE_MAX, 1))
+                .setPoolTimeoutMillis((Integer) connection.getOrDefault(Constants.CONNECTION_POOL_READ_TIMEOUT, DEFAULT_POOL_TIMEOUT_MILLIS));
+        SocketOptions socketOptions = new SocketOptions();
+        socketOptions.setConnectTimeoutMillis((Integer) connection.getOrDefault(Constants.CONNECTION_SOCKET_CONNECT_TIMEOUT, SocketOptions.DEFAULT_CONNECT_TIMEOUT_MILLIS));
+        socketOptions.setReadTimeoutMillis((Integer) connection.getOrDefault(Constants.CONNECTION_SOCKET_READ_TIMEOUT, SocketOptions.DEFAULT_READ_TIMEOUT_MILLIS));
+
         Cluster cluster = Cluster.builder()
                 .addContactPoints((String) connection.get(Constants.CONNECTION_HOST))
                 .withPort((Integer) connection.get(Constants.CONNECTION_PORT))
+                .withSocketOptions(socketOptions)
                 .withCredentials((String) connection.get(Constants.CONNECTION_USERNAME), (String) connection.get(Constants.CONNECTION_PASSWORD))
                 .build();
         return cluster;
@@ -160,7 +176,7 @@ public class CassandraHelper {
         columnListFromTable = buildColumnList();
         columnTypeMap = buildColumnMap();
         insertSql = buildSql();
-        statement =  session.prepare(insertSql);
+        statement = session.prepare(insertSql);
         LOG.info("columnListFromTable {}", columnListFromTable);
         LOG.info("columnTypeMap {}", columnTypeMap);
         LOG.info("insertSql {}", insertSql);
@@ -170,10 +186,10 @@ public class CassandraHelper {
     public static void connect() {
         PoolingOptions poolingOptions = new PoolingOptions();
         // 表示和集群里的机器至少有2个连接 最多有4个连接
-        poolingOptions.setCoreConnectionsPerHost(HostDistance.LOCAL, (Integer) connection.getOrDefault(Constants.CONNECTION_LOCAL_MIN,1))
-                .setMaxConnectionsPerHost(HostDistance.LOCAL, (Integer) connection.getOrDefault(Constants.CONNECTION_LOCAL_MAX,100))
-                .setCoreConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.getOrDefault(Constants.CONNECTION_DISTANCE_MIN,1))
-                .setMaxConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.getOrDefault(Constants.CONNECTION_DISTANCE_MAX,100));
+        poolingOptions.setCoreConnectionsPerHost(HostDistance.LOCAL, (Integer) connection.getOrDefault(Constants.CONNECTION_LOCAL_MIN, 1))
+                .setMaxConnectionsPerHost(HostDistance.LOCAL, (Integer) connection.getOrDefault(Constants.CONNECTION_LOCAL_MAX, 100))
+                .setCoreConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.getOrDefault(Constants.CONNECTION_DISTANCE_MIN, 1))
+                .setMaxConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.getOrDefault(Constants.CONNECTION_DISTANCE_MAX, 100));
 
         // addContactPoints:cassandra节点ip withPort:cassandra节点端口 默认9042
         // withCredentials:cassandra用户名密码 如果cassandra.yaml里authenticator：AllowAllAuthenticator 可以不用配置
@@ -354,13 +370,14 @@ public class CassandraHelper {
         return sb.toString();
     }
 
-    public static void insert(String  sql) {
+    public static void insert(String sql) {
         session.execute(sql);
 
     }
+
     public static void insertBatch(List<Record> recordList) {
         BatchStatement batchStmt = new BatchStatement();
-        List<BoundStatement> boundStatementList=new ArrayList<>(recordList.size());
+        List<BoundStatement> boundStatementList = new ArrayList<>(recordList.size());
         for (Record record : recordList) {
             Object[] obj;
             int number = record.getColumnNumber();
@@ -374,7 +391,7 @@ public class CassandraHelper {
                         obj[i] = null;
                     } else {
                         try {
-                            buildValue(columnTypeMap.get(((String) colObj).trim().replace("\"","")), record, i, obj);
+                            buildValue(columnTypeMap.get(((String) colObj).trim().replace("\"", "")), record, i, obj);
                         } catch (Exception e) {
                             e.printStackTrace();
                             LOG.error("buildColumnValue fail ,record:" + record.toString() + "" + e.getCause() + "");
@@ -394,7 +411,7 @@ public class CassandraHelper {
                     }
                 }
             }
-            BoundStatement boundStatement  = new BoundStatement(statement);
+            BoundStatement boundStatement = new BoundStatement(statement);
             boundStatementList.add(boundStatement.bind(obj));
         }
         batchStmt.addAll(boundStatementList);
@@ -406,8 +423,8 @@ public class CassandraHelper {
 
         Column col = record.getColumn(i);
 
-        if (col == null || col.getRawData() == null||colType==null) {
-            obj[i]=null;
+        if (col == null || col.getRawData() == null || colType == null) {
+            obj[i] = null;
             return;
         }
         //obj[i]=col.asBigInteger().intValue();

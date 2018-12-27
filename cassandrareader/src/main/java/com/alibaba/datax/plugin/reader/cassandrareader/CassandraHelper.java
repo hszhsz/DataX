@@ -9,6 +9,8 @@ import org.apache.commons.lang3.ObjectUtils;
 
 import java.util.*;
 
+import static com.datastax.driver.core.PoolingOptions.DEFAULT_POOL_TIMEOUT_MILLIS;
+
 
 /**
  * Desc:
@@ -140,12 +142,18 @@ public class CassandraHelper {
         poolingOptions.setCoreConnectionsPerHost(HostDistance.LOCAL, (Integer) connection.getOrDefault(Key.CONNECTION_LOCAL_MIN, 1))
                 .setMaxConnectionsPerHost(HostDistance.LOCAL, (Integer) connection.getOrDefault(Key.CONNECTION_LOCAL_MAX, 1))
                 .setCoreConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.getOrDefault(Key.CONNECTION_DISTANCE_MIN, 1))
-                .setMaxConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.getOrDefault(Key.CONNECTION_DISTANCE_MAX, 1));
+                .setMaxConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.getOrDefault(Key.CONNECTION_DISTANCE_MAX, 1))
+                .setPoolTimeoutMillis((Integer) connection.getOrDefault(Key.CONNECTION_POOL_READ_TIMEOUT, DEFAULT_POOL_TIMEOUT_MILLIS));
+        SocketOptions socketOptions = new SocketOptions();
+        socketOptions.setConnectTimeoutMillis((Integer) connection.getOrDefault(Key.CONNECTION_SOCKET_CONNECT_TIMEOUT, SocketOptions.DEFAULT_CONNECT_TIMEOUT_MILLIS));
+        socketOptions.setReadTimeoutMillis((Integer) connection.getOrDefault(Key.CONNECTION_SOCKET_READ_TIMEOUT, SocketOptions.DEFAULT_READ_TIMEOUT_MILLIS));
 
         // addContactPoints:cassandra节点ip withPort:cassandra节点端口 默认9042
         // withCredentials:cassandra用户名密码 如果cassandra.yaml里authenticator：AllowAllAuthenticator 可以不用配置
         Cluster cluster = Cluster.builder()
                 .addContactPoints((String) connection.get(Key.CONNECTION_HOST))
+                .withSocketOptions(socketOptions)
+                .withPoolingOptions(poolingOptions)
                 .withPort((Integer) connection.getOrDefault(Key.CONNECTION_PORT, 9042))
                 .withCredentials((String) connection.getOrDefault(Key.CONNECTION_USERNAME, ""), (String) connection.getOrDefault(Key.CONNECTION_PASSWORD, ""))
                 .withPoolingOptions(poolingOptions).build();
