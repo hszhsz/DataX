@@ -69,7 +69,7 @@ public class CassandraTaskProxy {
                         }
                         //cassandraHelper.insert(record);
                     } catch (Exception e) {
-                        LOG.error(String.format("record is empty, 您配置nullMode为[skip],将会忽略这条记录,record[%s]", record.toString()));
+                        LOG.error(String.format("error occurs,error[%s]", e.getMessage()));
                         recordList.forEach(x-> taskPluginCollector.collectDirtyRecord(x, e));
                     }
                 }
