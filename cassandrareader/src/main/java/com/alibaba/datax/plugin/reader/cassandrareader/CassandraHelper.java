@@ -156,7 +156,7 @@ public class CassandraHelper {
                 .withPoolingOptions(poolingOptions)
                 .withPort((Integer) connection.getOrDefault(Key.CONNECTION_PORT, 9042))
                 .withCredentials((String) connection.getOrDefault(Key.CONNECTION_USERNAME, ""), (String) connection.getOrDefault(Key.CONNECTION_PASSWORD, ""))
-                .withPoolingOptions(poolingOptions).build();
+                .withSocketOptions(socketOptions).build();
         return cluster;
     }
 

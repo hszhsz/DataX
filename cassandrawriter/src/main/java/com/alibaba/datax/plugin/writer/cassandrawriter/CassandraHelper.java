@@ -99,6 +99,7 @@ public class CassandraHelper {
                 .addContactPoints((String) connection.get(Constants.CONNECTION_HOST))
                 .withPort((Integer) connection.get(Constants.CONNECTION_PORT))
                 .withSocketOptions(socketOptions)
+                .withPoolingOptions(poolingOptions)
                 .withCredentials((String) connection.get(Constants.CONNECTION_USERNAME), (String) connection.get(Constants.CONNECTION_PASSWORD))
                 .build();
         return cluster;
