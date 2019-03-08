@@ -41,9 +41,8 @@ public class CassandraReaderSplitUtil {
             configurationList.add(taskConfig.clone());
             return configurationList;
         }
-        TableMetadata tableMetadata = CassandraHelper.buildCluster(taskConfig)
-                .getMetadata().getKeyspace(taskConfig.getString(Constants.KETSPACE))
-                .getTable(taskConfig.getString(Constants.TABLE));
+        TableMetadata tableMetadata = getTableMeta(taskConfig, taskConfig.getString(Constants.KETSPACE),
+                taskConfig.getString(Constants.TABLE));
         Set primaryKeys = tableMetadata.getPrimaryKey().stream().map(x -> x.getName()).collect(Collectors.toSet());
         if (!primaryKeys.contains(splitPKey)) {// 考虑性能不使用 TODO test
             LOG.info("splitPk 需要为 primaryKey");
@@ -116,9 +115,8 @@ public class CassandraReaderSplitUtil {
             pluginParams.add(configuration);
             return pluginParams;
         }
-        TableMetadata tableMetadata = CassandraHelper.buildCluster(configuration)
-                .getMetadata().getKeyspace(keySpace)
-                .getTable(table);
+
+        TableMetadata tableMetadata = getTableMeta(configuration, keySpace, table);
         DataType.Name pkType = tableMetadata.getColumn(splitPkName).getType().getName();
 
         if (isStringType(pkType)) {
@@ -157,6 +155,13 @@ public class CassandraReaderSplitUtil {
                 StringUtils.join(allQuerySql, "\n"));
 
         return pluginParams;
+    }
+
+    private static TableMetadata getTableMeta(Configuration configuration, String keySpace, String table) {
+        Cluster cluster = CassandraHelper.buildCluster(configuration);
+        TableMetadata metadata = cluster.getMetadata().getKeyspace(keySpace).getTable(table);
+        cluster.close();
+        return metadata;
     }
 
     public static String buildQuerySql(String column, String keySpace, String table,
