@@ -92,7 +92,7 @@ public class CassandraReaderSplitUtil {
         }
 
         //合并 a>1 , a>=2
-        if (where!=null&&!where.trim().isEmpty()) {
+        if (where != null && !where.trim().isEmpty()) {
             List<String> conditionList = new ArrayList<>();
             String[] conditions = where.trim().split("and");
             for (String condition : conditions) {
@@ -196,8 +196,12 @@ public class CassandraReaderSplitUtil {
         if (pkRangeSQL.toLowerCase().contains("where")) {
             executeSql = executeSql.concat("  allow filtering");
         }
+        Cluster cluster = null;
+        Session session = null;
         try {
-            rs = CassandraHelper.buildCluster(configuration).newSession().execute(executeSql);
+            cluster = CassandraHelper.buildCluster(configuration);
+            session = cluster.newSession();
+            rs = session.execute(executeSql);
             Row row = rs.one();
             LOG.info("checkSplitPk:execute sql result:" + row.toString());
 
@@ -216,8 +220,14 @@ public class CassandraReaderSplitUtil {
         } catch (Exception e) {
             throw DataXException.asDataXException(RUNTIME_ERROR, "DataX尝试切分表发生错误. 请检查您的配置并作出修改.", e);
         } finally {
-
+            if (session != null) {
+                session.close();
+            }
+            if (cluster != null) {
+                cluster.close();
+            }
         }
+
 
         return minMaxPK;
     }
