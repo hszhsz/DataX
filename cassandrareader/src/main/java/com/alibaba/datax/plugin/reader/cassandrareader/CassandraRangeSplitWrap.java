@@ -58,7 +58,7 @@ public class CassandraRangeSplitWrap {
                         quote, columnName, quote, RdbmsRangeSplitWrap.quoteConstantValue(rangeResult[i + 1], dataBaseType), quote));
             }
 
-            result.add(String.format(" %s >= %s%s%s AND %s < %s%s%s ", columnName, quote, RdbmsRangeSplitWrap.quoteConstantValue(rangeResult[rangeResult.length - 2], dataBaseType),
+            result.add(String.format(" %s >= %s%s%s AND %s <= %s%s%s ", columnName, quote, RdbmsRangeSplitWrap.quoteConstantValue(rangeResult[rangeResult.length - 2], dataBaseType),
                     quote, columnName, quote, RdbmsRangeSplitWrap.quoteConstantValue(rangeResult[rangeResult.length - 1], dataBaseType), quote));
             return result;
         }
