@@ -55,7 +55,6 @@ public class CassandraReader extends Reader {
         @Override
         public void startRead(RecordSender recordSender) {
             proxy.startRead(recordSender, this.getTaskPluginCollector());
-
         }
 
         @Override

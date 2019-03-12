@@ -30,24 +30,29 @@ public class CassandraReaderProxy {
     private static Logger LOG = LoggerFactory.getLogger(CassandraReaderProxy.class);
 
     private Configuration taskConfig;
+    private Cluster cluster;
+    private Session session;
 
     public CassandraReaderProxy(Configuration taskConfig) {
         this.taskConfig = taskConfig;
     }
 
-    public void init() {}
+    public void init() {
+    }
 
     public void startRead(RecordSender recordSender, TaskPluginCollector collector) {
 
         String sql = taskConfig.getNecessaryValue(Key.QUERY_SQL, CommonErrorCode.CONFIG_ERROR);
+
+        cluster = CassandraHelper.buildCluster(taskConfig);
+        session = cluster.connect();
         ResultSet resultSet;
         try {
-            resultSet = CassandraHelper.readTable(sql);
+            resultSet = session.execute(sql);
         } catch (Exception e) {
             LOG.error("Exception", e);
             return;
         } finally {
-            close();
         }
         Map<String, Object> tableInfo = new HashMap<>(2);
         tableInfo.put(Constants.KETSPACE, taskConfig.get(Constants.KETSPACE));
@@ -55,7 +60,7 @@ public class CassandraReaderProxy {
         String mode = taskConfig.getString(Key.MODE, Constants.ALL_MODE);
         Iterator<Row> result = resultSet.iterator();
         Record record = recordSender.createRecord();
-        while (result.hasNext()) {
+        while (!resultSet.isExhausted()) {
             try {
                 Row row = result.next();
                 if (mode.equals(Constants.ALL_MODE)) {
@@ -74,7 +79,6 @@ public class CassandraReaderProxy {
             record = recordSender.createRecord();
         }
         recordSender.flush();
-
     }
 
     private void buildRecordWithNormalMode(Row row, Record record) {
@@ -186,5 +190,13 @@ public class CassandraReaderProxy {
         }
     }
 
-    public void close() {}
+    public void close() {
+        if (session != null) {
+            session.close();
+        }
+        if (cluster != null) {
+            cluster.close();
+        }
+
+    }
 }

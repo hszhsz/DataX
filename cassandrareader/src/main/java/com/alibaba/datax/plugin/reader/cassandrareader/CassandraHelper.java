@@ -151,7 +151,7 @@ public class CassandraHelper {
         // addContactPoints:cassandra节点ip withPort:cassandra节点端口 默认9042
         // withCredentials:cassandra用户名密码 如果cassandra.yaml里authenticator：AllowAllAuthenticator 可以不用配置
         Cluster cluster = Cluster.builder()
-                .addContactPoints((String) connection.get(Key.CONNECTION_HOST))
+                .addContactPoints(((String) connection.get(Key.CONNECTION_HOST)).split(","))
                 .withSocketOptions(socketOptions)
                 .withPoolingOptions(poolingOptions)
                 .withPort((Integer) connection.getOrDefault(Key.CONNECTION_PORT, 9042))
