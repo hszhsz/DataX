@@ -78,6 +78,10 @@ public class CassandraHelper {
                 throw new InvalidQueryException(" SQL执行出错，请检查 sql=" + sql + "\n" + e.getMessage());
             }
         }
+        if (null != session) {
+            session.close();
+        }
+        clusterTmp.close();
     }
 
     private static Cluster buildCluster(Configuration originConfig) {
