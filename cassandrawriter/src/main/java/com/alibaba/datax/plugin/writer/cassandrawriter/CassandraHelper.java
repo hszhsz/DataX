@@ -100,7 +100,7 @@ public class CassandraHelper {
         socketOptions.setReadTimeoutMillis((Integer) connection.getOrDefault(Constants.CONNECTION_SOCKET_READ_TIMEOUT, SocketOptions.DEFAULT_READ_TIMEOUT_MILLIS));
 
         Cluster cluster = Cluster.builder()
-                .addContactPoints((String) connection.get(Constants.CONNECTION_HOST))
+                .addContactPoints(connection.get(Constants.CONNECTION_HOST).toString().split(","))
                 .withPort((Integer) connection.get(Constants.CONNECTION_PORT))
                 .withSocketOptions(socketOptions)
                 .withPoolingOptions(poolingOptions)
@@ -199,7 +199,7 @@ public class CassandraHelper {
         // addContactPoints:cassandra节点ip withPort:cassandra节点端口 默认9042
         // withCredentials:cassandra用户名密码 如果cassandra.yaml里authenticator：AllowAllAuthenticator 可以不用配置
         cluster = Cluster.builder()
-                .addContactPoints((String) connection.get(Constants.CONNECTION_HOST))
+                .addContactPoints(connection.get(Constants.CONNECTION_HOST).toString().split(","))
                 .withPort((Integer) connection.get(Constants.CONNECTION_PORT))
                 .withCredentials((String) connection.get(Constants.CONNECTION_USERNAME), (String) connection.get(Constants.CONNECTION_PASSWORD))
                 .withPoolingOptions(poolingOptions).build();
