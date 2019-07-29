@@ -14,6 +14,7 @@ import io.searchbox.client.JestResult;
 import io.searchbox.core.Bulk;
 import io.searchbox.core.BulkResult;
 import io.searchbox.core.Index;
+import io.searchbox.core.Update;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
@@ -313,6 +314,7 @@ public class ESWriter extends Writer {
             Map<String, Object> data = null;
             final Bulk.Builder bulkaction = new Bulk.Builder().defaultIndex(this.index).defaultType(this.type);
             for (Record record : writerBuffer) {
+                Map<String, Object> upsertData=new HashMap();
                 data = new HashMap<String, Object>();
                 String id = null;
                 for (int i = 0; i < record.getColumnNumber(); i++) {
@@ -385,12 +387,13 @@ public class ESWriter extends Writer {
                     }
                 }
 
-                if (id == null) {
-                    //id = UUID.randomUUID().toString();
-                    bulkaction.addAction(new Index.Builder(data).build());
-                } else {
-                    bulkaction.addAction(new Index.Builder(data).id(id).build());
+                upsertData.put("doc", data);
+                upsertData.put("doc_as_upsert", true);
+                Update.Builder tempbuilder = new Update.Builder(upsertData).index(this.index).type(this.type);
+                if (id != null) {
+                    tempbuilder.id(id);
                 }
+                bulkaction.addAction(tempbuilder.build());
             }
 
             try {
