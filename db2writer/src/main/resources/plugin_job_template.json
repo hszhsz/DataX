@@ -1,0 +1,20 @@
+{
+  "name": "db2writer",
+  "parameter": {
+    "connection": [
+      {
+        "jdbcUrl": "jdbc:db2://10.60.2.241:50000/NEWTODS",
+        "table": [
+          "ALIUSER.LJJ_TEST2"
+        ]
+      }
+    ],
+    "username": "db2inst1",
+    "password": "anywhere",
+    "table": "ALIUSER.LJJ_TEST2",
+    "column": [
+      "ID",
+      "NAME"
+    ]
+  }
+}

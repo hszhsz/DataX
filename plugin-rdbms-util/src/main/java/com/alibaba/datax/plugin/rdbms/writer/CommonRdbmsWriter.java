@@ -196,6 +196,7 @@ public class CommonRdbmsWriter {
 
         protected String writeRecordSql;
         protected String writeMode;
+        protected String primaryKey;
         protected boolean emptyAsNull;
         protected Triple<List<String>, List<Integer>, List<String>> resultSetMetaData;
 
@@ -233,6 +234,7 @@ public class CommonRdbmsWriter {
             this.batchByteSize = writerSliceConfig.getInt(Key.BATCH_BYTE_SIZE, Constant.DEFAULT_BATCH_BYTE_SIZE);
 
             writeMode = writerSliceConfig.getString(Key.WRITE_MODE, "INSERT");
+            primaryKey = writerSliceConfig.getString(Key.PRIMARY_KEY, "ID");
             emptyAsNull = writerSliceConfig.getBool(Key.EMPTY_AS_NULL, true);
             INSERT_OR_REPLACE_TEMPLATE = writerSliceConfig.getString(Constant.INSERT_OR_REPLACE_TEMPLATE_MARK);
             this.writeRecordSql = String.format(INSERT_OR_REPLACE_TEMPLATE, this.table);
@@ -556,7 +558,7 @@ public class CommonRdbmsWriter {
                     forceUseUpdate = true;
                 }
 
-                INSERT_OR_REPLACE_TEMPLATE = WriterUtil.getWriteTemplate(columns, valueHolders, writeMode, dataBaseType, forceUseUpdate);
+                INSERT_OR_REPLACE_TEMPLATE = WriterUtil.getWriteTemplate(primaryKey, columns, valueHolders, writeMode, dataBaseType, forceUseUpdate);
                 writeRecordSql = String.format(INSERT_OR_REPLACE_TEMPLATE, this.table);
             }
         }

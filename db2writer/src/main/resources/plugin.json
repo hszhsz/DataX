@@ -1,0 +1,6 @@
+{
+    "name": "db2writer",
+    "class": "com.alibaba.datax.plugin.writer.db2writer.Db2Writer",
+    "description": "db2 writer",
+    "developer": "liujiejin"
+}

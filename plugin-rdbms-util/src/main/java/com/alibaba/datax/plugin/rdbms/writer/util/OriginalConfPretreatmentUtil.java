@@ -99,10 +99,10 @@ public final class OriginalConfPretreatmentUtil {
         } else {
             boolean isPreCheck = originalConfig.getBool(Key.DRYRUN, false);
             List<String> allColumns;
-            if (isPreCheck){
-                allColumns = DBUtil.getTableColumnsByConn(DATABASE_TYPE,connectionFactory.getConnecttionWithoutRetry(), oneTable, connectionFactory.getConnectionInfo());
-            }else{
-                allColumns = DBUtil.getTableColumnsByConn(DATABASE_TYPE,connectionFactory.getConnecttion(), oneTable, connectionFactory.getConnectionInfo());
+            if (isPreCheck) {
+                allColumns = DBUtil.getTableColumnsByConn(DATABASE_TYPE, connectionFactory.getConnecttionWithoutRetry(), oneTable, connectionFactory.getConnectionInfo());
+            } else {
+                allColumns = DBUtil.getTableColumnsByConn(DATABASE_TYPE, connectionFactory.getConnecttion(), oneTable, connectionFactory.getConnectionInfo());
             }
 
             LOG.info("table:[{}] all columns:[\n{}\n].", oneTable,
@@ -122,7 +122,7 @@ public final class OriginalConfPretreatmentUtil {
                 ListUtil.makeSureNoValueDuplicate(userConfiguredColumns, false);
 
                 // 检查列是否都为数据库表中正确的列（通过执行一次 select column from table 进行判断）
-                DBUtil.getColumnMetaData(connectionFactory.getConnecttion(), oneTable,StringUtils.join(userConfiguredColumns, ","));
+                DBUtil.getColumnMetaData(connectionFactory.getConnecttion(), oneTable, StringUtils.join(userConfiguredColumns, ","));
             }
         }
     }
@@ -148,6 +148,7 @@ public final class OriginalConfPretreatmentUtil {
 
         // 默认为：insert 方式
         String writeMode = originalConfig.getString(Key.WRITE_MODE, "INSERT");
+        String primaryKey = originalConfig.getString(Key.PRIMARY_KEY, "ID");
 
         List<String> valueHolders = new ArrayList<String>(columns.size());
         for (int i = 0; i < columns.size(); i++) {
@@ -160,7 +161,7 @@ public final class OriginalConfPretreatmentUtil {
             forceUseUpdate = true;
         }
 
-        String writeDataSqlTemplate = WriterUtil.getWriteTemplate(columns, valueHolders, writeMode,dataBaseType, forceUseUpdate);
+        String writeDataSqlTemplate = WriterUtil.getWriteTemplate(primaryKey, columns, valueHolders, writeMode, dataBaseType, forceUseUpdate);
 
         LOG.info("Write data [\n{}\n], which jdbcUrl like:[{}]", writeDataSqlTemplate, jdbcUrl);
 
