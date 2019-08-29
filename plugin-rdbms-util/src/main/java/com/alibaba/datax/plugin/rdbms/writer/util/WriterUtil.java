@@ -127,7 +127,7 @@ public final class WriterUtil {
             List<String> tb2Holders = new ArrayList<String>(columnHolders.size());
             for (String columnHolder : columnHolders) {
                 if (!columnHolder.equalsIgnoreCase(primaryKey)) {
-                    setHolders.add("SET " + columnHolder + "= tb2." + columnHolder);
+                    setHolders.add(columnHolder + "= tb2." + columnHolder);
                 }
                 tb2Holders.add("tb2." + columnHolder);
             }
@@ -142,13 +142,14 @@ public final class WriterUtil {
                     .append(")AS tb2(")
                     .append(StringUtils.join(columnHolders, ","))
                     .append(") ON (tb1." + primaryKey + " = tb2." + primaryKey + ")")
-                    .append(" WHEN MATCHED THEN UPDATE ")
-                    .append(StringUtils.join(setHolders, " AND "))
+                    .append(" WHEN MATCHED THEN UPDATE SET ")
+                    .append(StringUtils.join(setHolders, " , "))
                     .append(" WHEN NOT MATCHED THEN ")
                     .append("INSERT (").append(StringUtils.join(columnHolders, ","))
                     .append(") VALUES(").append(StringUtils.join(tb2Holders, ","))
                     .append(")")
                     .toString();
+            System.out.println(writeDataSqlTemplate);
         } else if (forceUseUpdate ||
                 ((dataBaseType == DataBaseType.MySql || dataBaseType == DataBaseType.Tddl) && writeMode.trim().toLowerCase().startsWith("update"))
                 ) {
