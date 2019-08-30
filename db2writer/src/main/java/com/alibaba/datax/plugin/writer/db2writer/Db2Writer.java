@@ -95,6 +95,41 @@ public class Db2Writer extends Writer {
         }
 
     }
+//
+//    private static Connection getAliUserDB2Connection() throws SQLException {
+//        return DriverManager.getConnection("jdbc:db2://10.60.2.241:50000/NEWTODS", "db2inst1", "anywhere");
+//    }
+//
+//    public static void main(String[] args) throws SQLException {
+//        List<String> cols=Arrays.asList("CUST_ID",
+//                "APPLY_STATUS",
+//                "LICENSE_CODE",
+//                "NATION_CUST_CODE",
+//                "CUST_NAME",
+//                "CUST_SHORT_NAME",
+//                "IS_BUSILICE",
+//                "BUSI_LICENSE_ID",
+//                "MANAGER",
+//                "BUSI_ADDR",
+//                "STATUS",
+//                "CHARTER_SCOPE",
+//                "BUSI_AREA_PART",
+//                "BUSI_ADDR_BEGIN_DATE",
+//                "BUSI_ADDR_AVAIL_DATE",
+//                "MREGIE_ID",
+//                "CREGIE_ID",
+//                "TEND_ID_CARD",
+//                "BUSI_ADDR",
+//                "ORDER_TEL",
+//                "REG_FUND",
+//                "ALL_BUSI_AREA",
+//                "CUST_TYPE2",
+//                "IDENTITY_CARD_ID",
+//                "MD_SYNC_AT");
+//        Triple<List<String>, List<Integer>, List<String>> res = DBUtil.getColumnMetaData(getAliUserDB2Connection(), "ALIUSER.LW_AL_CUST", StringUtils.join(cols,','));
+////        Triple<List<String>, List<Integer>, List<String>> res = DBUtil.getColumnMetaData(getAliUserDB2Connection(), "ALIUSER.LW_AL_CUST", "*");
+//        System.out.println(res);
+//    }
 
 
 }
