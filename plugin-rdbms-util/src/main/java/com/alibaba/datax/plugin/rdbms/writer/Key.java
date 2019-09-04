@@ -17,6 +17,9 @@ public final class Key {
     public final static String PRIMARY_KEY = "primaryKey";
 
     public final static String UPDATE_IGNORE_NULL_COLUMN = "updateIgnoreNullColumn";
+
+    public final static String UPDATE_IGNORE_COLUMNS = "updateIgnoreNullColumn";
+
     public final static String NOT_NULL_COLUMN_DEFAULT_VALUE = "notNullColumnDefaultValue";
 
     public final static String PRE_SQL = "preSql";

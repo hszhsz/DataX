@@ -198,6 +198,7 @@ public class CommonRdbmsWriter {
         protected String writeMode;
         protected String primaryKey;
         protected boolean updateIgnoreNullColumn;
+        protected List<String> updateIgnoreColumns;
         protected Map<String, String> notNullColumnDefaultValue = Collections.emptyMap();
         protected boolean emptyAsNull;
         protected AtomicLong counter = new AtomicLong(0L);
@@ -239,6 +240,7 @@ public class CommonRdbmsWriter {
             writeMode = writerSliceConfig.getString(Key.WRITE_MODE, "INSERT");
             primaryKey = writerSliceConfig.getString(Key.PRIMARY_KEY, "ID");
             updateIgnoreNullColumn = writerSliceConfig.getBool(Key.UPDATE_IGNORE_NULL_COLUMN, false);
+            updateIgnoreColumns = writerSliceConfig.getList(Key.UPDATE_IGNORE_COLUMNS, Collections.<String>emptyList(),String.class);
             Map<String, String> defaultMap = Collections.emptyMap();
             notNullColumnDefaultValue = writerSliceConfig.getMap(Key.NOT_NULL_COLUMN_DEFAULT_VALUE, defaultMap, String.class);
             emptyAsNull = writerSliceConfig.getBool(Key.EMPTY_AS_NULL, true);
@@ -354,11 +356,11 @@ public class CommonRdbmsWriter {
             PreparedStatement preparedStatement = null;
             try {
                 connection.setAutoCommit(false);
-                if (dataBaseType == DataBaseType.DB2 && updateIgnoreNullColumn) {
+                if (dataBaseType == DataBaseType.DB2 && (updateIgnoreNullColumn||!updateIgnoreColumns.isEmpty())) {
                     Statement statement = connection.createStatement();
                     try {
                         for (Record record : buffer) {
-                            String sql = generateDb2Statement(record, columns, table, primaryKey, notNullColumnDefaultValue);
+                            String sql = generateDb2Statement(record, columns, table, primaryKey, notNullColumnDefaultValue,updateIgnoreColumns);
                             statement.addBatch(sql);
                         }
                         statement.executeBatch();
@@ -393,10 +395,10 @@ public class CommonRdbmsWriter {
             PreparedStatement preparedStatement = null;
             try {
                 connection.setAutoCommit(true);
-                if (dataBaseType == DataBaseType.DB2 && updateIgnoreNullColumn) {
+                if (dataBaseType == DataBaseType.DB2 && (updateIgnoreNullColumn||!updateIgnoreColumns.isEmpty())) {
                     for (Record record : buffer) {
                         Statement statement = connection.createStatement();
-                        String sql = generateDb2Statement(record, columns, table, primaryKey, notNullColumnDefaultValue);
+                        String sql = generateDb2Statement(record, columns, table, primaryKey, notNullColumnDefaultValue,updateIgnoreColumns);
                         try {
                             statement.execute(sql);
                         } catch (Exception e) {
@@ -604,7 +606,7 @@ public class CommonRdbmsWriter {
         }
 
 
-        public static String generateDb2Statement(Record record, List<String> columnNames, String tableName, String pk, Map<String, String> notNullColumnDefaultValue) {
+        public static String generateDb2Statement(Record record, List<String> columnNames, String tableName, String pk, Map<String, String> notNullColumnDefaultValue,List<String> updateIgnoreColumns) {
             List<String> columnValues = new ArrayList<String>();
             List<String> insertColumnValues = new ArrayList<String>();
             List<String> columnHolders = new ArrayList<String>();
@@ -621,7 +623,7 @@ public class CommonRdbmsWriter {
             List<String> setHolders = new ArrayList<String>(columnHolders.size());
             List<String> insertTb2Holders= new ArrayList<String>(columnHolders.size());
             for (String columnHolder : columnHolders) {
-                if (!columnHolder.equalsIgnoreCase(pk)) {
+                if (!columnHolder.equalsIgnoreCase(pk)&&!updateIgnoreColumns.contains(columnHolder)) {
                     setHolders.add(columnHolder + "= tb2." + columnHolder);
                 }
                 insertTb2Holders.add("tb2." + columnHolder);
