@@ -86,7 +86,10 @@ public class CommonRdbmsWriter {
 
         // 一般来说，是需要推迟到 task 中进行pre 的执行（单表情况例外）
         public void prepare(Configuration originalConfig) {
-            int tableNumber = originalConfig.getInt(Constant.TABLE_NUMBER_MARK);
+            Integer tableNumber = originalConfig.getInt(Constant.TABLE_NUMBER_MARK);
+            if(null == tableNumber) {
+                tableNumber = 1;
+            }
             if (tableNumber == 1) {
                 String username = originalConfig.getString(Key.USERNAME);
                 String password = originalConfig.getString(Key.PASSWORD);
@@ -108,7 +111,7 @@ public class CommonRdbmsWriter {
                 List<String> renderedPreSqls = WriterUtil.renderPreOrPostSqls(
                         preSqls, table);
 
-                originalConfig.remove(Constant.CONN_MARK);
+//                originalConfig.remove(Constant.CONN_MARK);
                 if (null != renderedPreSqls && !renderedPreSqls.isEmpty()) {
                     // 说明有 preSql 配置，则此处删除掉
                     originalConfig.remove(Key.PRE_SQL);
