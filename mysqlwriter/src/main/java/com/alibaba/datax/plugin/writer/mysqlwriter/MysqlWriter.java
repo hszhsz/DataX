@@ -28,6 +28,8 @@ public class MysqlWriter extends Writer {
         public void init() {
             this.originalConfig = super.getPluginJobConf();
             this.commonRdbmsWriterJob = new CommonRdbmsWriter.Job(DATABASE_TYPE);
+            //支持建表，然后向其中写入数据
+            this.commonRdbmsWriterJob.prepare(this.originalConfig);
             this.commonRdbmsWriterJob.init(this.originalConfig);
         }
 
@@ -36,7 +38,7 @@ public class MysqlWriter extends Writer {
         public void prepare() {
             //实跑先不支持 权限 检验
             //this.commonRdbmsWriterJob.privilegeValid(this.originalConfig, DATABASE_TYPE);
-            this.commonRdbmsWriterJob.prepare(this.originalConfig);
+//            this.commonRdbmsWriterJob.prepare(this.originalConfig);
         }
 
         @Override
