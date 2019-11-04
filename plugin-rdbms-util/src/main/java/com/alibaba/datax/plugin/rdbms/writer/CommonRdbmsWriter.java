@@ -200,13 +200,11 @@ public class CommonRdbmsWriter {
         protected String writeRecordSql;
         protected String writeMode;
         protected String primaryKey;
-        protected boolean updateIgnoreNullColumn = false;
-        protected boolean updateThenInsert = false;
-        protected List<String> updateIgnoreColumns = Collections.emptyList();
+        protected boolean updateIgnoreNullColumn;
+        protected List<String> updateIgnoreColumns;
         protected Map<String, String> notNullColumnDefaultValue = Collections.emptyMap();
         protected boolean emptyAsNull;
-        protected AtomicLong sqlCounter = new AtomicLong(0L);
-        protected static AtomicLong nullCounter = new AtomicLong(0L);
+        protected AtomicLong counter = new AtomicLong(0L);
         protected Triple<List<String>, List<Integer>, List<String>> resultSetMetaData;
 
         public Task(DataBaseType dataBaseType) {
@@ -245,8 +243,7 @@ public class CommonRdbmsWriter {
             writeMode = writerSliceConfig.getString(Key.WRITE_MODE, "INSERT");
             primaryKey = writerSliceConfig.getString(Key.PRIMARY_KEY, "ID");
             updateIgnoreNullColumn = writerSliceConfig.getBool(Key.UPDATE_IGNORE_NULL_COLUMN, false);
-            updateThenInsert = writerSliceConfig.getBool(Key.UPDATE_THEN_INSERT, false);
-            updateIgnoreColumns = writerSliceConfig.getList(Key.UPDATE_IGNORE_COLUMNS, Collections.<String>emptyList(), String.class);
+            updateIgnoreColumns = writerSliceConfig.getList(Key.UPDATE_IGNORE_COLUMNS, Collections.<String>emptyList(),String.class);
             Map<String, String> defaultMap = Collections.emptyMap();
             notNullColumnDefaultValue = writerSliceConfig.getMap(Key.NOT_NULL_COLUMN_DEFAULT_VALUE, defaultMap, String.class);
             emptyAsNull = writerSliceConfig.getBool(Key.EMPTY_AS_NULL, true);
@@ -362,31 +359,16 @@ public class CommonRdbmsWriter {
             PreparedStatement preparedStatement = null;
             try {
                 connection.setAutoCommit(false);
-                if (dataBaseType == DataBaseType.DB2 && (updateIgnoreNullColumn || !updateIgnoreColumns.isEmpty() || updateThenInsert)) {
+                if (dataBaseType == DataBaseType.DB2 && (updateIgnoreNullColumn||!updateIgnoreColumns.isEmpty())) {
                     Statement statement = connection.createStatement();
-                    if (updateThenInsert) {
-                        try {
-                            for (Record record : buffer) {
-                                String sql = generateDb2UpdateStatement(record, columns, table, primaryKey, notNullColumnDefaultValue, updateIgnoreColumns);
-                                int updateCount = statement.executeUpdate(sql);
-                                if (updateCount == 0) {
-                                    String insertSql = generateDb2InsertStatement(record, columns, table, primaryKey, notNullColumnDefaultValue, updateIgnoreColumns);
-                                    statement.execute(insertSql);
-                                }
-                            }
-                        } finally {
-                            statement.close();
+                    try {
+                        for (Record record : buffer) {
+                            String sql = generateDb2Statement(record, columns, table, primaryKey, notNullColumnDefaultValue,updateIgnoreColumns);
+                            statement.addBatch(sql);
                         }
-                    } else {
-                        try {
-                            for (Record record : buffer) {
-                                String sql = generateDb2MergeStatement(record, columns, table, primaryKey, notNullColumnDefaultValue, updateIgnoreColumns);
-                                statement.addBatch(sql);
-                            }
-                            statement.executeBatch();
-                        } finally {
-                            statement.close();
-                        }
+                        statement.executeBatch();
+                    } finally {
+                        statement.close();
                     }
                 } else {
                     preparedStatement = connection
@@ -416,46 +398,21 @@ public class CommonRdbmsWriter {
             PreparedStatement preparedStatement = null;
             try {
                 connection.setAutoCommit(true);
-                if (dataBaseType == DataBaseType.DB2 && (updateIgnoreNullColumn || !updateIgnoreColumns.isEmpty() || updateThenInsert)) {
-                    if (updateThenInsert) {
-                        for (Record record : buffer) {
-                            Statement statement = connection.createStatement();
-                            String sql = generateDb2UpdateStatement(record, columns, table, primaryKey, notNullColumnDefaultValue, updateIgnoreColumns);
-                            try {
-                                int updateCount = statement.executeUpdate(sql);
-                                if (updateCount == 0) {
-                                    String insertSql = generateDb2InsertStatement(record, columns, table, primaryKey, notNullColumnDefaultValue, updateIgnoreColumns);
-                                    System.out.println("the insert sql is:");
-                                    System.out.println(insertSql);
-                                    statement.execute(insertSql);
-                                }
-                            } catch (Exception e) {
-                                if (sqlCounter.getAndIncrement() < 10) {
-                                    System.out.println("the error sql is:");
-                                    System.out.println(sql);
-                                }
-                                LOG.debug(e.toString());
-                                this.taskPluginCollector.collectDirtyRecord(record, e);
-                            } finally {
-                                statement.close();
+                if (dataBaseType == DataBaseType.DB2 && (updateIgnoreNullColumn||!updateIgnoreColumns.isEmpty())) {
+                    for (Record record : buffer) {
+                        Statement statement = connection.createStatement();
+                        String sql = generateDb2Statement(record, columns, table, primaryKey, notNullColumnDefaultValue,updateIgnoreColumns);
+                        try {
+                            statement.execute(sql);
+                        } catch (Exception e) {
+                            if (counter.getAndIncrement() < 10) {
+                                System.out.println("the error sql is:");
+                                System.out.println(sql);
                             }
-                        }
-                    } else {
-                        for (Record record : buffer) {
-                            Statement statement = connection.createStatement();
-                            String sql = generateDb2MergeStatement(record, columns, table, primaryKey, notNullColumnDefaultValue, updateIgnoreColumns);
-                            try {
-                                statement.execute(sql);
-                            } catch (Exception e) {
-                                if (sqlCounter.getAndIncrement() < 10) {
-                                    System.out.println("the error sql is:");
-                                    System.out.println(sql);
-                                }
-                                LOG.debug(e.toString());
-                                this.taskPluginCollector.collectDirtyRecord(record, e);
-                            } finally {
-                                statement.close();
-                            }
+                            LOG.debug(e.toString());
+                            this.taskPluginCollector.collectDirtyRecord(record, e);
+                        } finally {
+                            statement.close();
                         }
                     }
                 } else {
@@ -651,89 +608,8 @@ public class CommonRdbmsWriter {
             return VALUE_HOLDER;
         }
 
-        public static String generateDb2UpdateStatement(Record record, List<String> columnNames, String tableName, String pk, Map<String, String> notNullColumnDefaultValue, List<String> updateIgnoreColumns) {
-            List<String> columnValues = new ArrayList<String>();
-            List<String> columnHolders = new ArrayList<String>();
-            String pkValue = null;
-            for (int i = 0; i < record.getColumnNumber(); i++) {
-                Column column = record.getColumn(i);
-                if (column.getByteSize() != 0) {
-                    columnValues.add("'" + column.asString() + "'");
-                    columnHolders.add(columnNames.get(i));
-                }
-            }
 
-            List<String> setHolders = new ArrayList<String>(columnHolders.size());
-            for (int i = 0; i < columnHolders.size(); i++) {
-                String columnHolder = columnHolders.get(i);
-                if (!columnHolder.equalsIgnoreCase(pk) && !updateIgnoreColumns.contains(columnHolder)) {
-                    setHolders.add(columnHolder + " = " + columnValues.get(i));
-                } else if (columnHolder.equalsIgnoreCase(pk)) {
-                    pkValue = columnValues.get(i);
-                }
-            }
-
-            if (columnValues.isEmpty() || setHolders.isEmpty() || pkValue == null) {
-                System.out.println("record all column or set statement is empty or pkValue is null,record is skipped,record:" + record.toString());
-                return null;
-            }
-
-            StringBuilder stringBuilder = new StringBuilder()
-                    .append("UPDATE ").append(tableName).append(" SET ")
-                    .append(StringUtils.join(setHolders, " , "))
-                    .append(" WHERE ").append(pk).append(" = ").append(pkValue);
-
-
-            return stringBuilder.toString();
-        }
-
-        public static String generateDb2InsertStatement(Record record, List<String> columnNames, String tableName, String pk, Map<String, String> notNullColumnDefaultValue, List<String> updateIgnoreColumns) {
-            List<String> columnValues = new ArrayList<String>();
-            List<String> insertColumnValues = new ArrayList<String>();
-            List<String> columnHolders = new ArrayList<String>();
-            for (int i = 0; i < record.getColumnNumber(); i++) {
-                Column column = record.getColumn(i);
-                if (column.getByteSize() != 0) {
-                    columnValues.add("'" + column.asString() + "'");
-                    insertColumnValues.add("'" + column.asString() + "'");
-                    columnHolders.add(columnNames.get(i));
-                }
-            }
-
-            List<String> insertColumnHolders = new ArrayList<String>(columnHolders);
-
-            if (!notNullColumnDefaultValue.isEmpty()) {
-                for (Map.Entry<String, String> mapEntry : notNullColumnDefaultValue.entrySet()) {
-                    if (!insertColumnHolders.contains(mapEntry.getKey().toUpperCase()) && !insertColumnHolders.contains(mapEntry.getKey().toLowerCase())) {
-                        if (nullCounter.getAndIncrement() < 200) {
-                            System.out.println("notNullColumnDefaultValue is not empty:" + notNullColumnDefaultValue + ",adding key :" + mapEntry.getKey() + ",default value:" + mapEntry.getValue());
-                        }
-                        insertColumnHolders.add(mapEntry.getKey());
-                        insertColumnValues.add(mapEntry.getValue());
-                    } else {
-                        if (nullCounter.getAndIncrement() < 200) {
-                            System.out.println("notNullColumn not match:" + notNullColumnDefaultValue + ",expect adding key :" + mapEntry.getKey() + ",expect default value:" + mapEntry.getValue());
-                        }
-                    }
-                }
-            }
-            if (columnValues.isEmpty()) {
-                System.out.println("record all column is empty,record is skipped,record:" + record.toString());
-                return null;
-            }
-
-            StringBuilder stringBuilder = new StringBuilder()
-                    .append("INSERT INTO ").append(tableName).append("(")
-                    .append(StringUtils.join(insertColumnHolders, ","))
-                    .append(")")
-                    .append(" VALUES (")
-                    .append(StringUtils.join(insertColumnValues, ","))
-                    .append(")");
-
-            return stringBuilder.toString();
-        }
-
-        public static String generateDb2MergeStatement(Record record, List<String> columnNames, String tableName, String pk, Map<String, String> notNullColumnDefaultValue, List<String> updateIgnoreColumns) {
+        public static String generateDb2Statement(Record record, List<String> columnNames, String tableName, String pk, Map<String, String> notNullColumnDefaultValue,List<String> updateIgnoreColumns) {
             List<String> columnValues = new ArrayList<String>();
             List<String> insertColumnValues = new ArrayList<String>();
             List<String> columnHolders = new ArrayList<String>();
@@ -748,9 +624,9 @@ public class CommonRdbmsWriter {
 
             List<String> insertColumnHolders = new ArrayList<String>();
             List<String> setHolders = new ArrayList<String>(columnHolders.size());
-            List<String> insertTb2Holders = new ArrayList<String>(columnHolders.size());
+            List<String> insertTb2Holders= new ArrayList<String>(columnHolders.size());
             for (String columnHolder : columnHolders) {
-                if (!columnHolder.equalsIgnoreCase(pk) && !updateIgnoreColumns.contains(columnHolder)) {
+                if (!columnHolder.equalsIgnoreCase(pk)&&!updateIgnoreColumns.contains(columnHolder)) {
                     setHolders.add(columnHolder + "= tb2." + columnHolder);
                 }
                 insertTb2Holders.add("tb2." + columnHolder);
@@ -758,17 +634,10 @@ public class CommonRdbmsWriter {
             }
             if (!notNullColumnDefaultValue.isEmpty()) {
                 for (Map.Entry<String, String> mapEntry : notNullColumnDefaultValue.entrySet()) {
-                    if (!insertColumnHolders.contains(mapEntry.getKey().toUpperCase()) && !insertColumnHolders.contains(mapEntry.getKey().toLowerCase())) {
-                        if (nullCounter.getAndIncrement() < 200) {
-                            System.out.println("notNullColumnDefaultValue is not empty:" + notNullColumnDefaultValue + ",adding key :" + mapEntry.getKey() + ",default value:" + mapEntry.getValue());
-                        }
+                    if (!insertColumnHolders.contains(mapEntry.getKey())) {
                         insertColumnHolders.add(mapEntry.getKey());
                         insertColumnValues.add(mapEntry.getValue());
                         insertTb2Holders.add("tb2." + mapEntry.getKey());
-                    } else {
-                        if (nullCounter.getAndIncrement() < 200) {
-                            System.out.println("notNullColumn not match:" + notNullColumnDefaultValue + ",expect adding key :" + mapEntry.getKey() + ",expect default value:" + mapEntry.getValue());
-                        }
                     }
                 }
             }
@@ -806,91 +675,7 @@ public class CommonRdbmsWriter {
 //            Column column4=new BoolColumn(false);
 //            Column column5=new LongColumn(666L);
 //            List<Column> columns= Arrays.asList(column1,column2,column3,column4,column5);
-//            System.out.println(generateDb2InsertStatement2(columns,columnNames,"TEST","A",Collections.<String, String>emptyMap(),Collections.<String>emptyList()));
-//            System.out.println(generateDb2UpdateStatement2(columns,columnNames,"TEST","A",Collections.<String, String>emptyMap(),Collections.<String>emptyList()));
+//            System.out.println(generateDb2Statement(columns,columnNames,"TEST","A"));
 //        }
-//
-//        public static String generateDb2InsertStatement2(List<Column> columns, List<String> columnNames, String tableName, String pk, Map<String, String> notNullColumnDefaultValue, List<String> updateIgnoreColumns) {
-//            List<String> columnValues = new ArrayList<String>();
-//            List<String> insertColumnValues = new ArrayList<String>();
-//            List<String> columnHolders = new ArrayList<String>();
-//            for (int i = 0; i < columns.size(); i++) {
-//                Column column = columns.get(i);
-//                if (column.getByteSize() != 0) {
-//                    columnValues.add("'" + column.asString() + "'");
-//                    insertColumnValues.add("'" + column.asString() + "'");
-//                    columnHolders.add(columnNames.get(i));
-//                }
-//            }
-//
-//            List<String> insertColumnHolders = new ArrayList<String>(columnHolders);
-//
-//            if (!notNullColumnDefaultValue.isEmpty()) {
-//                for (Map.Entry<String, String> mapEntry : notNullColumnDefaultValue.entrySet()) {
-//                    if (!insertColumnHolders.contains(mapEntry.getKey().toUpperCase()) && !insertColumnHolders.contains(mapEntry.getKey().toLowerCase())) {
-//                        if (nullCounter.getAndIncrement() < 200) {
-//                            System.out.println("notNullColumnDefaultValue is not empty:" + notNullColumnDefaultValue + ",adding key :" + mapEntry.getKey() + ",default value:" + mapEntry.getValue());
-//                        }
-//                        insertColumnHolders.add(mapEntry.getKey());
-//                        insertColumnValues.add(mapEntry.getValue());
-//                    } else {
-//                        if (nullCounter.getAndIncrement() < 200) {
-//                            System.out.println("notNullColumn not match:" + notNullColumnDefaultValue + ",expect adding key :" + mapEntry.getKey() + ",expect default value:" + mapEntry.getValue());
-//                        }
-//                    }
-//                }
-//            }
-//            if (columnValues.isEmpty()) {
-//                System.out.println("record all column is empty,record is skipped,record:" + columns.toString());
-//                return null;
-//            }
-//
-//            StringBuilder stringBuilder = new StringBuilder()
-//                    .append("INSERT INTO ").append(tableName).append("(")
-//                    .append(StringUtils.join(insertColumnHolders, ","))
-//                    .append(")")
-//                    .append(" VALUES (")
-//                    .append(StringUtils.join(insertColumnValues, ","))
-//                    .append(")");
-//
-//            return stringBuilder.toString();
-//        }
-//    }
-//
-//    public static String generateDb2UpdateStatement2(List<Column> columns, List<String> columnNames, String tableName, String pk, Map<String, String> notNullColumnDefaultValue, List<String> updateIgnoreColumns) {
-//        List<String> columnValues = new ArrayList<String>();
-//        List<String> columnHolders = new ArrayList<String>();
-//        String pkValue = null;
-//        for (int i = 0; i < columns.size(); i++) {
-//            Column column = columns.get(i);
-//            if (column.getByteSize() != 0) {
-//                columnValues.add("'" + column.asString() + "'");
-//                columnHolders.add(columnNames.get(i));
-//            }
-//        }
-//
-//        List<String> setHolders = new ArrayList<String>(columnHolders.size());
-//        for (int i = 0; i < columnHolders.size(); i++) {
-//            String columnHolder = columnHolders.get(i);
-//            if (!columnHolder.equalsIgnoreCase(pk) && !updateIgnoreColumns.contains(columnHolder)) {
-//                setHolders.add(columnHolder + " = " + columnValues.get(i));
-//            } else if (columnHolder.equalsIgnoreCase(pk)) {
-//                pkValue = columnValues.get(i);
-//            }
-//        }
-//
-//        if (columnValues.isEmpty() || setHolders.isEmpty() || pkValue == null) {
-//            System.out.println("record all column or set statement is empty or pkValue is null,record is skipped,record:" + columns.toString());
-//            return null;
-//        }
-//
-//        StringBuilder stringBuilder = new StringBuilder()
-//                .append("UPDATE ").append(tableName).append(" SET ")
-//                .append(StringUtils.join(setHolders, " , "))
-//                .append(" WHERE ").append(pk).append(" = ").append(pkValue);
-//
-//
-//        return stringBuilder.toString();
-//    }
     }
 }
