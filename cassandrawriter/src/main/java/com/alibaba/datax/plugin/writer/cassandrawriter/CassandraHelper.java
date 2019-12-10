@@ -3,6 +3,7 @@ package com.alibaba.datax.plugin.writer.cassandrawriter;
 import com.alibaba.datax.common.element.Column;
 import com.alibaba.datax.common.element.Record;
 import com.alibaba.datax.common.exception.DataXException;
+import com.alibaba.datax.common.plugin.TaskPluginCollector;
 import com.alibaba.datax.common.util.Configuration;
 import com.alibaba.fastjson.JSON;
 import com.datastax.driver.core.*;
@@ -287,6 +288,7 @@ public class CassandraHelper {
                 case NULL:
                 case BAD:
                     break;
+                default:
             }
             if (j != (record.getColumnNumber() - 1)) {
                 sb.append(",");
@@ -380,7 +382,7 @@ public class CassandraHelper {
 
     }
 
-    public static void insertBatch(List<Record> recordList) {
+    public static void insertBatch(List<Record> recordList,TaskPluginCollector taskPluginCollector) {
         BatchStatement batchStmt = new BatchStatement();
         List<BoundStatement> boundStatementList = new ArrayList<>(recordList.size());
         for (Record record : recordList) {
@@ -398,6 +400,7 @@ public class CassandraHelper {
                         try {
                             buildValue(columnTypeMap.get(((String) colObj).trim().replace("\"", "")), record, i, obj);
                         } catch (Exception e) {
+                            taskPluginCollector.collectDirtyRecord(record,e);
                             e.printStackTrace();
                             LOG.error("buildColumnValue fail ,record:" + record.toString() + "" + e.getCause() + "");
                             break;
@@ -411,6 +414,7 @@ public class CassandraHelper {
                     try {
                         buildValue(columnListFromTable.get(i).getType(), record, i, obj);
                     } catch (Exception e) {
+                        taskPluginCollector.collectDirtyRecord(record,e);
                         LOG.error("buildColumnValue fail ,record:" + record.toString() + "" + e.getMessage() + "");
                         break;
                     }
@@ -541,6 +545,7 @@ public class CassandraHelper {
             case TUPLE:
                 obj[i] = gsonParseObjectFromString(col.asString(), TupleValue.class);
                 break;
+            default:
         }
 
 

@@ -54,7 +54,7 @@ public class CassandraTaskProxy {
                 }
                 if(batchSize==1){
                     try {
-                        insert(record);
+                        insert(record,taskPluginCollector);
                     }catch (Exception e){
                         LOG.error(String.format("insert error ,record[%s]", record.toString()));
                         taskPluginCollector.collectDirtyRecord(record, e);
@@ -63,7 +63,7 @@ public class CassandraTaskProxy {
                     recordList.add(record);
                     try {
                         if (recordList.size() >= batchSize || System.currentTimeMillis() - timer > duration * 1000) {
-                            CassandraHelper.insertBatch(recordList);
+                            CassandraHelper.insertBatch(recordList,taskPluginCollector);
                             recordList.clear();
                             timer = System.currentTimeMillis();
                         }
@@ -71,11 +71,12 @@ public class CassandraTaskProxy {
                     } catch (Exception e) {
                         LOG.error(String.format("error occurs,error[%s]", e.getMessage()));
                         recordList.forEach(x-> taskPluginCollector.collectDirtyRecord(x, e));
+                        taskPluginCollector.collectDirtyRecord(record, e);
                     }
                 }
             }
             if(!recordList.isEmpty()) {
-                CassandraHelper.insertBatch(recordList);
+                CassandraHelper.insertBatch(recordList,taskPluginCollector);
                 recordList.clear();
             }
         } catch (Exception e) {
@@ -84,7 +85,7 @@ public class CassandraTaskProxy {
 
         } finally {
             if (!recordList.isEmpty()) {
-                CassandraHelper.insertBatch(recordList);
+                CassandraHelper.insertBatch(recordList,taskPluginCollector);
                 recordList.clear();
                 timer = System.currentTimeMillis();
             }
@@ -93,7 +94,7 @@ public class CassandraTaskProxy {
 
     public void close() {}
 
-    public void insert(Record record)
+    public void insert(Record record,TaskPluginCollector taskPluginCollector)
     {
         StringBuilder sb = new StringBuilder();
 
@@ -144,6 +145,7 @@ public class CassandraTaskProxy {
                     case NULL:
                     case BAD:
                         break;
+                    default:
                 }
             }
             if(j != (record.getColumnNumber() -1)) {
@@ -155,6 +157,7 @@ public class CassandraTaskProxy {
         try {
             CassandraHelper.insert(sb.toString());
         }catch (Exception e){
+            taskPluginCollector.collectDirtyRecord(record,e);
             LOG.error("insert error sql {}, error {}",sb.toString(),e.getMessage());
             throw  e;
         }
