@@ -3,11 +3,39 @@ package com.alibaba.datax.plugin.reader.cassandrareader;
 import com.alibaba.datax.common.exception.CommonErrorCode;
 import com.alibaba.datax.common.exception.DataXException;
 import com.alibaba.datax.common.util.Configuration;
-import com.datastax.driver.core.*;
+import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.ColumnDefinitions;
+import com.datastax.driver.core.ColumnMetadata;
+import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.HostDistance;
+import com.datastax.driver.core.PoolingOptions;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
+import com.datastax.driver.core.SocketOptions;
+import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.exceptions.InvalidQueryException;
+import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
+import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.schema.Table;
+import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.select.PlainSelect;
+import net.sf.jsqlparser.statement.select.Select;
+import net.sf.jsqlparser.statement.select.SelectExpressionItem;
+import net.sf.jsqlparser.statement.select.SelectItem;
+import net.sf.jsqlparser.statement.select.SelectItemVisitorAdapter;
 import org.apache.commons.lang3.ObjectUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static com.datastax.driver.core.PoolingOptions.DEFAULT_POOL_TIMEOUT_MILLIS;
 
@@ -45,7 +73,7 @@ public class CassandraHelper {
     }
 
     private static void buildConfigFromSql(String sql, Configuration taskConfig) {
-        Map<String, Object> tableInfoFromSql = CassandraHelper.splitSQL(sql.toLowerCase());
+        Map<String, Object> tableInfoFromSql = CassandraHelper.parseSQL(sql.toLowerCase());
         taskConfig.set(Constants.TABLE, tableInfoFromSql.get(Constants.TABLE));
         taskConfig.set(Constants.KETSPACE, tableInfoFromSql.get(Constants.KETSPACE));
         taskConfig.set(Constants.WHERE, tableInfoFromSql.get(Constants.WHERE));
@@ -73,7 +101,7 @@ public class CassandraHelper {
 
     public static Map<String, DataType> getColumnMap(Cluster cluster, Configuration taskConfig) {
         String sql = taskConfig.getNecessaryValue(Constants.SQL, CommonErrorCode.CONFIG_ERROR);
-        Map<String, Object> split = splitSQL(sql);
+        Map<String, Object> split = parseSQL(sql);
         TableMetadata tableMetadata = cluster.getMetadata().getKeyspace((String) split.get(Constants.KETSPACE)).getTable((String) split.get(Constants.TABLE));
 
         List<ColumnMetadata> columns = tableMetadata.getColumns();//可能会很大很大
@@ -88,7 +116,7 @@ public class CassandraHelper {
 
     public static Map<String, Object> splitSQL(String sql) {
         Map<String, Object> sqlMap = new HashMap<String, Object>();
-        int keySpaceStartIndex = sql.indexOf("from ");
+        int keySpaceStartIndex = sql.toLowerCase().indexOf("from ");
         if (keySpaceStartIndex == -1) {
             throw new InvalidQueryException(" SQL语法错误，请检查 ");
         }
@@ -109,10 +137,50 @@ public class CassandraHelper {
         String columns = selectAndCollumns.replace("select", "").trim();
         String[] wheres = sql.toLowerCase().split(Constants.WHERE);
         if (wheres.length == 2) {
-            sqlMap.put(Constants.WHERE, wheres[1].trim().toLowerCase().replace("allow", "").replace("filtering", ""));
+                sqlMap.put(Constants.WHERE, wheres[1].trim().toLowerCase().replace("allow", "").replace("filtering", ""));
         }
 
         sqlMap.put(Constants.COLUMN, columns);
+
+        return sqlMap;
+    }
+
+
+    public static Map<String, Object> parseSQL(String sql) {
+        Map<String, Object> sqlMap = new HashMap<String, Object>();
+        try {
+            Statement stmt = CCJSqlParserUtil.parse(sql);
+            Select selectStatement = (Select) stmt;
+            PlainSelect plainSelect = (PlainSelect)selectStatement.getSelectBody();
+            List<SelectItem> selectItems = plainSelect.getSelectItems();
+            List<String> colsNames = Lists.newArrayList();
+            for (SelectItem selectItem : selectItems) {
+                selectItem.accept(new SelectItemVisitorAdapter() {
+                    @Override
+                    public void visit(SelectExpressionItem item) {
+                        colsNames.add(item.getExpression().getASTNode().jjtGetFirstToken().toString());
+                    }
+                });
+            }
+            Table table = (Table)plainSelect.getFromItem();
+            String keyspaceName = table.getSchemaName();
+            String tableName = table.getName();
+            Expression where = plainSelect.getWhere();
+            if (Strings.isNullOrEmpty(keyspaceName)) {
+                throw new InvalidQueryException(" SQL语法错误，请检查 ");
+            }
+
+            sqlMap.put(Constants.KETSPACE, keyspaceName);
+            sqlMap.put(Constants.TABLE, tableName);
+            sqlMap.put(Constants.COLUMN, Joiner.on(",").join(colsNames));
+
+            if(where != null){
+                sqlMap.put(Constants.WHERE, where.toString());
+            }
+
+        } catch (JSQLParserException e) {
+            throw new InvalidQueryException(e.getMessage());
+        }
 
         return sqlMap;
     }
@@ -171,5 +239,46 @@ public class CassandraHelper {
         if (session != null) {
             session.close();
         }
+    }
+
+
+    public static void main(String[] args) {
+        String sql = "SELECT case_uuid as a, org_uuid as b, dept_uuid , get_dept_uuid , org_abbr , org_shortname , case_name , case_code , case_year , case_date , prov_code , city_code , county_code , case_place , gis_x , gis_y , cause_of_action , case_property , is_no_master , party , co_party , register_time , reg_doc_no , case_source , case_brief , legal_argument , punish_argument , true_casevalue , false_casevalue , total_value , true_qty , false_qty , total_qty , forfeit , confiscate_amt , add_forfeit , total_amt , undertaker , handle_person , report_status , report_date , handle_proc , handle_result , " +
+                "handle_status , is_finshed , finsh_date , is_filed , file_uuid , file_no , filed_date , is_major_case , priority_level , is_internet_case , is_network_case , goods_ident_status , goods_ident_date , goods_handle_status , goods_handle_date , get_node , is_trans , " +
+                "receive_org_type , trans_date , is_hear , is_supv , is_den , is_overdue , overdue_days , is_recon , input_time ," +
+                " is_process_complete , reg_status , is_criminal , back_date , goods_value , realize_amt , buy_amt , trans_receipt_date , " +
+                "is_true_cig_case , uni_doc_no , upd_time , upd_person , evid_type_code , evid_type , is_market , market_name ," +
+                "case_from , case_to , is_transport , transport_addr , transport_style , lst_modi_time , sync_status , remote_org_code , " +
+                "sync_time , case_from_prov , case_from_city , case_from_county , case_to_prov , case_to_city , case_to_county  " +
+                "FROM cdp.ods_zm_t_c_caseinfo ";
+//        String sql = "select case_uuid from rt_basic where acc_pedal_stroke= 0 limit 5 ALLOW FILTERING";
+        //splitSQL(sql);
+        System.out.println(parseSQL(sql));
+        try {
+            Statement stmt = CCJSqlParserUtil.parse(sql);
+            Select selectStatement = (Select) stmt;
+            PlainSelect plainSelect = (PlainSelect)selectStatement.getSelectBody();
+            List<SelectItem> selectItems = plainSelect.getSelectItems();
+            List<String> colsNames = Lists.newArrayList();
+            for (SelectItem selectItem : selectItems) {
+                selectItem.accept(new SelectItemVisitorAdapter() {
+                    @Override
+                    public void visit(SelectExpressionItem item) {
+                        System.out.println(item.getExpression().getASTNode().jjtGetFirstToken().toString());
+                        colsNames.add(item.getExpression().getASTNode().jjtGetFirstToken().toString());
+                    }
+                });
+            }
+            Table table = (Table)plainSelect.getFromItem();
+            System.out.println(plainSelect.getWhere().toString());
+            System.out.println(table.getSchemaName());
+            System.out.println(table.getName());
+            System.out.println(colsNames);
+
+
+        } catch (JSQLParserException e) {
+            e.printStackTrace();
+        }
+
     }
 }
