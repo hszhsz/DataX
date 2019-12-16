@@ -150,11 +150,11 @@ public class CassandraReaderProxy {
                     break;
                 case TIMESTAMP:
                     Date valueTIMESTAMP = row.get(columnName, TypeCodec.timestamp());
-                    record.addColumn(new DateColumn(valueTIMESTAMP));
+                    record.addColumn(new DateColumn(valueTIMESTAMP == null ? null :valueTIMESTAMP));
                     break;
                 case DATE:
                     LocalDate valueDATE = row.get(columnName, TypeCodec.date());
-                    record.addColumn(new DateColumn(valueDATE.getMillisSinceEpoch()));
+                    record.addColumn(new DateColumn(valueDATE == null ? null :valueDATE.getMillisSinceEpoch()));
                     break;
                 case INET:
                 case TIMEUUID:
