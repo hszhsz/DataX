@@ -437,6 +437,16 @@ public class CassandraHelper {
             return;
         }
 
+        if (col.asString() == null || col.asString().isEmpty()) {
+            if (colType.getName() == DataType.Name.ASCII || colType.getName() == DataType.Name.TEXT ||
+                    colType.getName() == DataType.Name.VARCHAR) {
+                obj[i] =  col.asString();
+            } else {
+                obj[i] =  null;
+            }
+            return;
+        }
+
         //obj[i]=col.asBigInteger().intValue();
 
         switch (colType.getName()) {
