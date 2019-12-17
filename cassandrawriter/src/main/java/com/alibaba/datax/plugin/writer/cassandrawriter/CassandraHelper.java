@@ -432,10 +432,11 @@ public class CassandraHelper {
 
         Column col = record.getColumn(i);
 
-        if (col == null || col.getRawData() == null || colType == null) {
+        if (col == null || col.getRawData() == null || colType == null ) {
             obj[i] = null;
             return;
         }
+
         //obj[i]=col.asBigInteger().intValue();
 
         switch (colType.getName()) {
@@ -481,7 +482,7 @@ public class CassandraHelper {
                 obj[i] = valueDECIMAL;
                 break;
             case DOUBLE:
-                Double valueDOUBLE = col.asDouble();
+                Double valueDOUBLE = new Double(col.asString());
                 obj[i] = valueDOUBLE;
                 break;
             case FLOAT:
