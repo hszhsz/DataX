@@ -29,6 +29,7 @@ import net.sf.jsqlparser.statement.select.SelectExpressionItem;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SelectItemVisitorAdapter;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -148,8 +149,14 @@ public class CassandraHelper {
 
     public static Map<String, Object> parseSQL(String sql) {
         Map<String, Object> sqlMap = new HashMap<String, Object>();
+        String parseSql;
+        if (StringUtils.endsWithIgnoreCase(sql.trim(), Key.ALLOW_FILTERING)){
+            parseSql = StringUtils.removeEndIgnoreCase(sql.trim(), Key.ALLOW_FILTERING);
+        } else {
+            parseSql = sql;
+        }
         try {
-            Statement stmt = CCJSqlParserUtil.parse(sql);
+            Statement stmt = CCJSqlParserUtil.parse(parseSql);
             Select selectStatement = (Select) stmt;
             PlainSelect plainSelect = (PlainSelect)selectStatement.getSelectBody();
             List<SelectItem> selectItems = plainSelect.getSelectItems();
@@ -253,7 +260,10 @@ public class CassandraHelper {
                 "FROM cdp.ods_zm_t_c_caseinfo ";
 //        String sql = "select case_uuid from rt_basic where acc_pedal_stroke= 0 limit 5 ALLOW FILTERING";
         //splitSQL(sql);
-        System.out.println(parseSQL(sql));
+
+        String sql1 = "SELECT check_date , org_code , index_id , check_table , index_value , data_source , begin_date , end_date  FROM cdp.dwd_zm_check_index_value  WHERE  check_date='20200116' ALLOW FILTERING";
+
+        System.out.println(parseSQL(sql1));
         try {
             Statement stmt = CCJSqlParserUtil.parse(sql);
             Select selectStatement = (Select) stmt;
