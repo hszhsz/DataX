@@ -34,4 +34,6 @@ public final class Key {
 
     public final static String ALLOWFILTER = "allowFilter";
 
+    public final static String ALLOW_FILTERING = "ALLOW FILTERING";
+
 }
