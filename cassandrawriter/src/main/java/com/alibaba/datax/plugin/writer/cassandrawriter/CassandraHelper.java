@@ -8,6 +8,7 @@ import com.alibaba.datax.common.util.Configuration;
 import com.alibaba.fastjson.JSON;
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.InvalidQueryException;
+import com.datastax.driver.core.querybuilder.QueryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,10 +96,10 @@ public class CassandraHelper {
                 .setMaxConnectionsPerHost(HostDistance.LOCAL, (Integer) connection.getOrDefault(Constants.CONNECTION_LOCAL_MAX, 1))
                 .setCoreConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.getOrDefault(Constants.CONNECTION_DISTANCE_MIN, 1))
                 .setMaxConnectionsPerHost(HostDistance.REMOTE, (Integer) connection.getOrDefault(Constants.CONNECTION_DISTANCE_MAX, 1))
-                .setPoolTimeoutMillis((Integer) connection.getOrDefault(Constants.CONNECTION_POOL_READ_TIMEOUT, DEFAULT_POOL_TIMEOUT_MILLIS));
+                .setPoolTimeoutMillis((Integer) connection.getOrDefault(Constants.CONNECTION_POOL_READ_TIMEOUT, Constants.CONNECTION_POOL_READ_TIMEOUT_MILLS));
         SocketOptions socketOptions = new SocketOptions();
-        socketOptions.setConnectTimeoutMillis((Integer) connection.getOrDefault(Constants.CONNECTION_SOCKET_CONNECT_TIMEOUT, SocketOptions.DEFAULT_CONNECT_TIMEOUT_MILLIS));
-        socketOptions.setReadTimeoutMillis((Integer) connection.getOrDefault(Constants.CONNECTION_SOCKET_READ_TIMEOUT, SocketOptions.DEFAULT_READ_TIMEOUT_MILLIS));
+        socketOptions.setConnectTimeoutMillis((Integer) connection.getOrDefault(Constants.CONNECTION_SOCKET_CONNECT_TIMEOUT, Constants.CONNECTION_SOCKET_CONNECT_TIMEOUT_MILLS));
+        socketOptions.setReadTimeoutMillis((Integer) connection.getOrDefault(Constants.CONNECTION_SOCKET_READ_TIMEOUT, Constants.CONNECTION_SOCKET_READ_TIMEOUT_MILLS));
 
         QueryOptions queryOptions = new QueryOptions();
         queryOptions.setConsistencyLevel(ConsistencyLevel.ONE);
@@ -432,8 +433,9 @@ public class CassandraHelper {
             BoundStatement boundStatement = new BoundStatement(statement);
             boundStatementList.add(boundStatement.bind(obj));
         }
-        batchStmt.addAll(boundStatementList);
 
+        batchStmt.addAll(boundStatementList);
+        batchStmt.setConsistencyLevel(ConsistencyLevel.ONE);
         session.execute(batchStmt);
     }
 
