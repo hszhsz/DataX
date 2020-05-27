@@ -25,12 +25,12 @@ public final class Constants {
 
     public final static String CONNECTION_DISTANCE_MAX = "distance_max";
     public final static String CONNECTION_POOL_READ_TIMEOUT = "pool_connect_timeout";
-    public final static int CONNECTION_POOL_READ_TIMEOUT_MILLS = 30000;
+    public final static int CONNECTION_POOL_READ_TIMEOUT_MILLS = 500000;
 
     public final static String CONNECTION_SOCKET_CONNECT_TIMEOUT = "socket_connect_timeout";
-    public final static int CONNECTION_SOCKET_CONNECT_TIMEOUT_MILLS = 120000;
+    public final static int CONNECTION_SOCKET_CONNECT_TIMEOUT_MILLS = 500000;
     public final static String CONNECTION_SOCKET_READ_TIMEOUT = "socket_read_timeout";
-    public final static int CONNECTION_SOCKET_READ_TIMEOUT_MILLS = 120000;
+    public final static int CONNECTION_SOCKET_READ_TIMEOUT_MILLS = 500000;
 
 
     public final static String COLUMN = "column";
