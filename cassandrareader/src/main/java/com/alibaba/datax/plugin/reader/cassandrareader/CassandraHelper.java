@@ -257,9 +257,10 @@ public class CassandraHelper {
 
         String sql1 = "SELECT check_date , org_code , index_id , check_table , index_value , data_source , begin_date , end_date  FROM cdp.dwd_zm_check_index_value  WHERE  check_date='20200116' ALLOW FILTERING";
 
-        System.out.println(parseSQL(sql1));
+        String sql2 = "SELECT mbr_id , receiver_name , receiver_mobile , detail_address , is_default , pt  FROM cdp.ads_cust_mbr_addr_detail  WHERE  pt='2020-06-03' allow filtering";
+        System.out.println(parseSQL(sql2));
         try {
-            Statement stmt = CCJSqlParserUtil.parse(sql);
+            Statement stmt = CCJSqlParserUtil.parse(sql2);
             Select selectStatement = (Select) stmt;
             PlainSelect plainSelect = (PlainSelect)selectStatement.getSelectBody();
             List<SelectItem> selectItems = plainSelect.getSelectItems();
