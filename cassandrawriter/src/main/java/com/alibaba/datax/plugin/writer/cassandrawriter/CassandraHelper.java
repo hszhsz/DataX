@@ -8,6 +8,7 @@ import com.alibaba.datax.common.util.Configuration;
 import com.alibaba.fastjson.JSON;
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.InvalidQueryException;
+import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +20,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.datastax.driver.core.PoolingOptions.DEFAULT_POOL_TIMEOUT_MILLIS;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.timestamp;
 
 public class CassandraHelper {
     private static final Logger LOG = LoggerFactory.getLogger(CassandraHelper.class);
@@ -29,6 +30,10 @@ public class CassandraHelper {
     private static Configuration config = null;
     private static List<Object> column = null;
     public static boolean needCreateTable = false;
+
+    private static List<String> columnMeta = null;
+    private static List<DataType> columnTypes;
+    private static int writeTimeCol = -1;
 
     private static Map<String, DataType> columnTypeMap = null;
     private static List<Object> primaryKey = null;
@@ -253,61 +258,142 @@ public class CassandraHelper {
     /**
      * 插入
      */
+//    public static void insert(Record record) {
+//        StringBuilder sb = new StringBuilder();
+//
+//        BoundStatement boundStmt = statement.bind();
+//
+//        sb.append("INSERT INTO ")
+//                .append((String) keyspace.get(Constants.KEYSPACE_NAME))
+//                .append(".")
+//                .append(table)
+//                .append(" (");
+//
+//        for (int i = 0; i < column.size(); i++) {
+//            sb.append(column.get(i));
+//            if (i != (column.size() - 1)) {
+//                sb.append(",");
+//            }
+//        }
+//
+//        sb.append(") VALUES ( ");
+//
+//        for (int j = 0; j < record.getColumnNumber(); j++) {
+//            Column column = record.getColumn(j);
+//            switch (column.getType()) {
+//                case INT:
+//                    sb.append(column.asBigInteger());
+//                    break;
+//                case BOOL:
+//                    sb.append(column.asBoolean());
+//                    break;
+//                case DATE:
+//                    sb.append(column.asDate());
+//                    break;
+//                case LONG:
+//                    sb.append(column.asLong());
+//                    break;
+//                case BYTES:
+//                    sb.append("'").append(column.asBytes().toString()).append("'");
+//                    break;
+//                case DOUBLE:
+//                    sb.append(column.asDouble());
+//                    break;
+//                case STRING:
+//                    sb.append("'").append(column.asString()).append("'");
+//                    break;
+//                case NULL:
+//                case BAD:
+//                    break;
+//                default:
+//            }
+//            if (j != (record.getColumnNumber() - 1)) {
+//                sb.append(",");
+//            }
+//        }
+//
+//        sb.append(" )");
+//
+//        session.execute(sb.toString());
+//    }
+
     public static void insert(Record record) {
-        StringBuilder sb = new StringBuilder();
 
-        sb.append("INSERT INTO ")
-                .append((String) keyspace.get(Constants.KEYSPACE_NAME))
-                .append(".")
-                .append(table)
-                .append(" (");
+        Cluster clusterTmp = buildCluster(config);
+        Session session = clusterTmp.connect((String) keyspace.get(Constants.KEYSPACE_NAME));
+        KeyspaceMetadata key = clusterTmp.getMetadata().getKeyspace((String) keyspace.get(Constants.KEYSPACE_NAME));
 
-        for (int i = 0; i < column.size(); i++) {
-            sb.append(column.get(i));
-            if (i != (column.size() - 1)) {
-                sb.append(",");
+        TableMetadata tableMetadata = key.getTable(table);
+        columnMeta = config.getList(Constants.COLUMN,String.class);
+        columnTypes = new ArrayList<>(columnMeta.size());
+        Insert insertStmt = QueryBuilder.insertInto(table);
+        for( String colunmnName : columnMeta ) {
+            if( colunmnName.toLowerCase().equals(Constants.WRITE_TIME) ) {
+                if( writeTimeCol != -1 ) {
+                    throw DataXException
+                            .asDataXException(
+                                    CassandraWriterErrorCode.CONF_ERROR,
+                                    "列配置信息有错误. 只能有一个时间戳列(writetime())");
+                }
+                writeTimeCol = columnTypes.size();
+                continue;
             }
+            insertStmt.value(colunmnName,QueryBuilder.bindMarker());
+            ColumnMetadata col = tableMetadata.getColumn(colunmnName);
+            if( col == null ) {
+                throw DataXException
+                        .asDataXException(
+                                CassandraWriterErrorCode.CONF_ERROR,
+                                String.format(
+                                        "列配置信息有错误. 表中未找到列名 '%s' .",
+                                        colunmnName));
+            }
+            columnTypes.add(col.getType());
         }
+        if(writeTimeCol != -1) {
+            insertStmt.using(timestamp(QueryBuilder.bindMarker()));
+        }
+//        String cl = config.getString(Constants.CONSITANCY_LEVEL);
+//        if( cl != null && !cl.isEmpty() ) {
+//            insertStmt.setConsistencyLevel(ConsistencyLevel.valueOf(cl));
+//        } else {
+//            insertStmt.setConsistencyLevel(ConsistencyLevel.LOCAL_QUORUM);
+//        }
 
-        sb.append(") VALUES ( ");
+        statement = session.prepare(insertStmt);
+        BoundStatement boundStmt = statement.bind();
 
         for (int j = 0; j < record.getColumnNumber(); j++) {
             Column column = record.getColumn(j);
             switch (column.getType()) {
                 case INT:
-                    sb.append(column.asBigInteger());
+                    boundStmt.setInt(j, column.asLong().intValue());
                     break;
                 case BOOL:
-                    sb.append(column.asBoolean());
+                    boundStmt.setBool(j, column.asBoolean());
                     break;
                 case DATE:
-                    sb.append(column.asDate());
+                    boundStmt.setDate(j, LocalDate.fromMillisSinceEpoch(column.asDate().getTime()));
                     break;
                 case LONG:
-                    sb.append(column.asLong());
+                    boundStmt.setLong(j, column.asLong());
                     break;
                 case BYTES:
-                    sb.append("'").append(column.asBytes().toString()).append("'");
+                    boundStmt.setString(j, "'" + column.asBytes().toString() +"'");
                     break;
                 case DOUBLE:
-                    sb.append(column.asDouble());
+                    boundStmt.setDouble(j, column.asDouble());
                     break;
                 case STRING:
-                    sb.append("'").append(column.asString()).append("'");
+                    boundStmt.setString(j, column.asString());
                     break;
                 case NULL:
                 case BAD:
                     break;
                 default:
             }
-            if (j != (record.getColumnNumber() - 1)) {
-                sb.append(",");
-            }
         }
-
-        sb.append(" )");
-
-        session.execute(sb.toString());
+        session.execute(boundStmt);
     }
 
     public static void close() {

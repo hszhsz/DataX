@@ -6,6 +6,7 @@ import com.alibaba.datax.common.exception.DataXException;
 import com.alibaba.datax.common.plugin.RecordReceiver;
 import com.alibaba.datax.common.plugin.TaskPluginCollector;
 import com.alibaba.datax.common.util.Configuration;
+import com.datastax.driver.core.BoundStatement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,6 +97,7 @@ public class CassandraTaskProxy {
 
     public void insert(Record record,TaskPluginCollector taskPluginCollector)
     {
+
         StringBuilder sb = new StringBuilder();
 
         sb.append("INSERT INTO ")
@@ -140,8 +142,8 @@ public class CassandraTaskProxy {
                         break;
                     case STRING:
                         if (column.asString() == null) sb.append(column.asString());
-                        else sb.append(column.asString());
-//                        else sb.append("'").append(column.asString().replace("'","" ).replace("\"","" ).replace(","," ")).append("'");
+//                        else sb.append(column.asString());
+                        else sb.append("'").append(column.asString().replace("'","" ).replace("\"","" ).replace(","," ")).append("'");
                         break;
                     case NULL:
                     case BAD:
@@ -156,7 +158,7 @@ public class CassandraTaskProxy {
 
         sb.append(" )");
         try {
-            CassandraHelper.insert(sb.toString());
+            CassandraHelper.insert(record);
         }catch (Exception e){
             taskPluginCollector.collectDirtyRecord(record,e);
             LOG.error("insert error sql {}, error {}",sb.toString(),e.getMessage());
