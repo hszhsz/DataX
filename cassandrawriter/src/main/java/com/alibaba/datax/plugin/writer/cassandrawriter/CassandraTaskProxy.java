@@ -140,7 +140,7 @@ public class CassandraTaskProxy {
                         break;
                     case STRING:
                         if (column.asString() == null) sb.append(column.asString());
-                        else sb.append(column.asString());
+                        else sb.append("'" + column.asString() + "'");
 //                        else sb.append("'").append(column.asString().replace("'","" ).replace("\"","" ).replace(","," ")).append("'");
                         break;
                     case NULL:
