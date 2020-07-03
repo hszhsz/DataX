@@ -35,6 +35,7 @@ public class CassandraHelper {
     private static List<DataType> columnTypes;
     private static int writeTimeCol = -1;
 
+    private static TableMetadata tableMetadata;
     private static Map<String, DataType> columnTypeMap = null;
     private static List<Object> primaryKey = null;
     private static String insertSql = "";
@@ -184,19 +185,62 @@ public class CassandraHelper {
         primaryKey = config.getList(Constants.PRIMARY_KEY);
 
         connect();
-        initTableMeta();
+        initKeyspaceMeta();
     }
 
-    public static void initTableMeta() {
+//    public static void initTableMeta() {
+//        column = config.getList(Constants.COLUMN);
+//        columnListFromTable = buildColumnList();
+//        columnTypeMap = buildColumnMap();
+//        insertSql = buildSql();
+//        statement = session.prepare(insertSql);
+//        LOG.info("columnListFromTable {}", columnListFromTable);
+//        LOG.info("columnTypeMap {}", columnTypeMap);
+//        LOG.info("insertSql {}", insertSql);
+//    }
+
+    public static void initKeyspaceMeta() {
         column = config.getList(Constants.COLUMN);
         columnListFromTable = buildColumnList();
         columnTypeMap = buildColumnMap();
-        insertSql = buildSql();
-        statement = session.prepare(insertSql);
+//        insertSql = buildSql();
+//        statement = session.prepare(insertSql);
         LOG.info("columnListFromTable {}", columnListFromTable);
         LOG.info("columnTypeMap {}", columnTypeMap);
         LOG.info("insertSql {}", insertSql);
+        KeyspaceMetadata key = cluster.getMetadata().getKeyspace((String) keyspace.get(Constants.KEYSPACE_NAME));
+        tableMetadata = key.getTable(table);
+        columnMeta = config.getList(Constants.COLUMN,String.class);
+        columnTypes = new ArrayList<>(columnMeta.size());
 
+        Insert insertStmt = QueryBuilder.insertInto(table);
+        for( String colunmnName : columnMeta ) {
+            if( colunmnName.toLowerCase().equals(Constants.WRITE_TIME) ) {
+                if( writeTimeCol != -1 ) {
+                    throw DataXException
+                            .asDataXException(
+                                    CassandraWriterErrorCode.CONF_ERROR,
+                                    "列配置信息有错误. 只能有一个时间戳列(writetime())");
+                }
+                writeTimeCol = columnTypes.size();
+                continue;
+            }
+            insertStmt.value(colunmnName,QueryBuilder.bindMarker());
+            ColumnMetadata col = tableMetadata.getColumn(colunmnName);
+            if( col == null ) {
+                throw DataXException
+                        .asDataXException(
+                                CassandraWriterErrorCode.CONF_ERROR,
+                                String.format(
+                                        "列配置信息有错误. 表中未找到列名 '%s' .",
+                                        colunmnName));
+            }
+            columnTypes.add(col.getType());
+        }
+        if(writeTimeCol != -1) {
+            insertStmt.using(timestamp(QueryBuilder.bindMarker()));
+        }
+        statement = session.prepare(insertStmt);
     }
 
     public static void connect() {
@@ -221,7 +265,7 @@ public class CassandraHelper {
                 .withPoolingOptions(poolingOptions).build();
 
         // 建立连接
-        session = cluster.connect();
+        session = cluster.connect((String) keyspace.get(Constants.KEYSPACE_NAME));
 
     }
 
@@ -319,73 +363,33 @@ public class CassandraHelper {
 
     public static void insert(Record record) {
 
-        Cluster clusterTmp = buildCluster(config);
-        Session session = clusterTmp.connect((String) keyspace.get(Constants.KEYSPACE_NAME));
-        KeyspaceMetadata key = clusterTmp.getMetadata().getKeyspace((String) keyspace.get(Constants.KEYSPACE_NAME));
-
-        TableMetadata tableMetadata = key.getTable(table);
-        columnMeta = config.getList(Constants.COLUMN,String.class);
-        columnTypes = new ArrayList<>(columnMeta.size());
-        Insert insertStmt = QueryBuilder.insertInto(table);
-        for( String colunmnName : columnMeta ) {
-            if( colunmnName.toLowerCase().equals(Constants.WRITE_TIME) ) {
-                if( writeTimeCol != -1 ) {
-                    throw DataXException
-                            .asDataXException(
-                                    CassandraWriterErrorCode.CONF_ERROR,
-                                    "列配置信息有错误. 只能有一个时间戳列(writetime())");
-                }
-                writeTimeCol = columnTypes.size();
-                continue;
-            }
-            insertStmt.value(colunmnName,QueryBuilder.bindMarker());
-            ColumnMetadata col = tableMetadata.getColumn(colunmnName);
-            if( col == null ) {
-                throw DataXException
-                        .asDataXException(
-                                CassandraWriterErrorCode.CONF_ERROR,
-                                String.format(
-                                        "列配置信息有错误. 表中未找到列名 '%s' .",
-                                        colunmnName));
-            }
-            columnTypes.add(col.getType());
-        }
-        if(writeTimeCol != -1) {
-            insertStmt.using(timestamp(QueryBuilder.bindMarker()));
-        }
-//        String cl = config.getString(Constants.CONSITANCY_LEVEL);
-//        if( cl != null && !cl.isEmpty() ) {
-//            insertStmt.setConsistencyLevel(ConsistencyLevel.valueOf(cl));
-//        } else {
-//            insertStmt.setConsistencyLevel(ConsistencyLevel.LOCAL_QUORUM);
-//        }
-
-        statement = session.prepare(insertStmt);
         BoundStatement boundStmt = statement.bind();
-
         for (int j = 0; j < record.getColumnNumber(); j++) {
             Column column = record.getColumn(j);
-            switch (column.getType()) {
+            DataType type = columnTypes.get(j);
+            switch (type.getName()) {
+                case ASCII:
+                case TEXT:
+                case VARCHAR:
+                    boundStmt.setString(j, column.asString());
+                    break;
                 case INT:
                     boundStmt.setInt(j, column.asLong().intValue());
                     break;
-                case BOOL:
+                case BOOLEAN:
                     boundStmt.setBool(j, column.asBoolean());
                     break;
                 case DATE:
                     boundStmt.setDate(j, LocalDate.fromMillisSinceEpoch(column.asDate().getTime()));
                     break;
-                case LONG:
-                    boundStmt.setLong(j, column.asLong());
+                case TINYINT:
+                    boundStmt.setByte(j, column.asLong().byteValue());
                     break;
-                case BYTES:
-                    boundStmt.setString(j, "'" + column.asBytes().toString() +"'");
+                case BLOB:
+                    boundStmt.setBytes(j, ByteBuffer.wrap(column.asBytes()));
                     break;
                 case DOUBLE:
                     boundStmt.setDouble(j, column.asDouble());
-                    break;
-                case STRING:
-                    boundStmt.setString(j, column.asString());
                     break;
                 case SMALLINT:
                     boundStmt.setShort(j, column.asLong().shortValue());
@@ -405,9 +409,7 @@ public class CassandraHelper {
                 case TIMESTAMP:
                     boundStmt.setTimestamp(j, column.asDate());
                     break;
-                case NULL:
-                case BAD:
-                    break;
+
                 default:
             }
         }

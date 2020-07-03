@@ -51,7 +51,7 @@ public class CassandraTaskProxy {
                     LOG.info("needCreateTable========:" + CassandraHelper.needCreateTable);
                     CassandraHelper.createTable(record);
                     CassandraHelper.needCreateTable = false;
-                    CassandraHelper.initTableMeta(); //cassandraHelper 需要重新初始化tablemeta info
+                    CassandraHelper.initKeyspaceMeta(); //cassandraHelper 需要重新初始化tablemeta info
                 }
                 if(batchSize==1){
                     try {
@@ -158,6 +158,7 @@ public class CassandraTaskProxy {
 
         sb.append(" )");
         try {
+
             CassandraHelper.insert(record);
         }catch (Exception e){
             taskPluginCollector.collectDirtyRecord(record,e);
