@@ -387,6 +387,24 @@ public class CassandraHelper {
                 case STRING:
                     boundStmt.setString(j, column.asString());
                     break;
+                case SMALLINT:
+                    boundStmt.setShort(j, column.asLong().shortValue());
+                    break;
+                case BIGINT:
+                    boundStmt.setLong(j, column.asLong());
+                    break;
+                case FLOAT:
+                    boundStmt.setFloat(j, column.asDouble().floatValue());
+                    break;
+                case DECIMAL:
+                    boundStmt.setDecimal(j, column.asBigDecimal());
+                    break;
+                case TIME:
+                    boundStmt.setTime(j, column.asLong());
+                    break;
+                case TIMESTAMP:
+                    boundStmt.setTimestamp(j, column.asDate());
+                    break;
                 case NULL:
                 case BAD:
                     break;
