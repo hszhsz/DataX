@@ -366,52 +366,57 @@ public class CassandraHelper {
         BoundStatement boundStmt = statement.bind();
         for (int j = 0; j < record.getColumnNumber(); j++) {
             Column column = record.getColumn(j);
-            DataType type = columnTypes.get(j);
-            switch (type.getName()) {
-                case ASCII:
-                case TEXT:
-                case VARCHAR:
-                    boundStmt.setString(j, column.asString());
-                    break;
-                case INT:
-                    boundStmt.setInt(j, column.asLong().intValue());
-                    break;
-                case BOOLEAN:
-                    boundStmt.setBool(j, column.asBoolean());
-                    break;
-                case DATE:
-                    boundStmt.setDate(j, LocalDate.fromMillisSinceEpoch(column.asDate().getTime()));
-                    break;
-                case TINYINT:
-                    boundStmt.setByte(j, column.asLong().byteValue());
-                    break;
-                case BLOB:
-                    boundStmt.setBytes(j, ByteBuffer.wrap(column.asBytes()));
-                    break;
-                case DOUBLE:
-                    boundStmt.setDouble(j, column.asDouble());
-                    break;
-                case SMALLINT:
-                    boundStmt.setShort(j, column.asLong().shortValue());
-                    break;
-                case BIGINT:
-                    boundStmt.setLong(j, column.asLong());
-                    break;
-                case FLOAT:
-                    boundStmt.setFloat(j, column.asDouble().floatValue());
-                    break;
-                case DECIMAL:
-                    boundStmt.setDecimal(j, column.asBigDecimal());
-                    break;
-                case TIME:
-                    boundStmt.setTime(j, column.asLong());
-                    break;
-                case TIMESTAMP:
-                    boundStmt.setTimestamp(j, column.asDate());
-                    break;
+            if (column.getRawData() != null) {
+                DataType type = columnTypes.get(j);
+                switch (type.getName()) {
+                    case ASCII:
+                    case TEXT:
+                    case VARCHAR:
+                        boundStmt.setString(j, column.asString());
+                        break;
+                    case INT:
+                        boundStmt.setInt(j, column.asLong().intValue());
+                        break;
+                    case BOOLEAN:
+                        boundStmt.setBool(j, column.asBoolean());
+                        break;
+                    case DATE:
+                        boundStmt.setDate(j, LocalDate.fromMillisSinceEpoch(column.asDate().getTime()));
+                        break;
+                    case TINYINT:
+                        boundStmt.setByte(j, column.asLong().byteValue());
+                        break;
+                    case BLOB:
+                        boundStmt.setBytes(j, ByteBuffer.wrap(column.asBytes()));
+                        break;
+                    case DOUBLE:
+                        boundStmt.setDouble(j, column.asDouble());
+                        break;
+                    case SMALLINT:
+                        boundStmt.setShort(j, column.asLong().shortValue());
+                        break;
+                    case BIGINT:
+                        boundStmt.setLong(j, column.asLong());
+                        break;
+                    case FLOAT:
+                        boundStmt.setFloat(j, column.asDouble().floatValue());
+                        break;
+                    case DECIMAL:
+                        boundStmt.setDecimal(j, column.asBigDecimal());
+                        break;
+                    case TIME:
+                        boundStmt.setTime(j, column.asLong());
+                        break;
+                    case TIMESTAMP:
+                        boundStmt.setTimestamp(j, column.asDate());
+                        break;
 
-                default:
+                    default:
+                }
+            }else {
+                boundStmt.setToNull(j);
             }
+
         }
         session.execute(boundStmt);
     }
