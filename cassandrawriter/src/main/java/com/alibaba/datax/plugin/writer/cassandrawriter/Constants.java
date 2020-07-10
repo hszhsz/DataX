@@ -19,7 +19,11 @@ public final class Constants {
 
     public final static String CONNECTION_LOCAL_MIN = "local_min";
 
+    public final static String CONSITANCY_LEVEL = "consistancyLevel";
+
     public final static String CONNECTION_LOCAL_MAX = "local_max";
+
+    public final static String WRITE_TIME = "writetime()";
 
     public final static String CONNECTION_DISTANCE_MIN = "distance_min";
 
@@ -59,6 +63,8 @@ public final class Constants {
     public static final String CREATETABLE = "createTable";
 
     public static final String CREATEKETSPACE = "createKeySpace";
+
+
 
 
 }
