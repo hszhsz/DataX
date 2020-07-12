@@ -1,0 +1,14 @@
+{
+  "name": "kuduwriter",
+  "parameter": {
+    "table": "",
+    "column": [
+    ],
+    "master":"",
+    "primaryKey": [
+    ],
+    "batch-size":"",
+    "mutationBufferSpace": "",
+    "isUpsert":""
+  }
+}

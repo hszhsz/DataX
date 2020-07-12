@@ -87,6 +87,7 @@
         <module>hbase11xsqlwriter</module>
         <module>elasticsearchwriter</module>
         <module>cassandrawriter</module>
+        <module>kuduwriter</module>
         <module>db2writer</module>
 
         <!-- common support module -->

@@ -1,4 +1,4 @@
-package com.alibaba.datax.plugin.writer.cassandrawriter;
+package com.alibaba.datax.plugin.writer.kuduwriter;
 
 import com.alibaba.datax.common.element.Column;
 import com.alibaba.datax.common.element.Record;
@@ -8,7 +8,6 @@ import com.alibaba.datax.common.util.Configuration;
 import com.alibaba.fastjson.JSON;
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.InvalidQueryException;
-import com.datastax.driver.core.querybuilder.QueryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,8 +17,6 @@ import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import static com.datastax.driver.core.PoolingOptions.DEFAULT_POOL_TIMEOUT_MILLIS;
 
 public class CassandraHelper {
     private static final Logger LOG = LoggerFactory.getLogger(CassandraHelper.class);

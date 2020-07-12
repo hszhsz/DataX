@@ -1,4 +1,4 @@
-package com.alibaba.datax.plugin.writer.cassandrawriter;
+package com.alibaba.datax.plugin.writer.kuduwriter;
 
 import com.alibaba.datax.common.plugin.RecordReceiver;
 import com.alibaba.datax.common.spi.Writer;

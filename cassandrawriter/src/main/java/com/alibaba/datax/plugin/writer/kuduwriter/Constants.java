@@ -1,4 +1,4 @@
-package com.alibaba.datax.plugin.writer.cassandrawriter;
+package com.alibaba.datax.plugin.writer.kuduwriter;
 
 /**
  * @ClassName Constants
