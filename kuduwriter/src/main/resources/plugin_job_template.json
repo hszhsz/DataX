@@ -1,0 +1,26 @@
+{
+    "name": "cassandrawriter",
+    "parameter": {
+        "table": "",
+        "keyspace": {
+            "name": "",
+            "class": "",
+            "replication_factor": 1
+        },
+        "preSql":[],
+        "batchSize":10,
+        "duration":10,
+        "ttl":0,
+        "connection": {
+                "host": "",
+                "port": 9042,
+                "username": "",
+                "password": "",
+                "local_min": 1,
+                "local_max": 2,
+                "distance_min": 1,
+                "distance_max": 2
+            },
+        "truncate": false
+    }
+}
