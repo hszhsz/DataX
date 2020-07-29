@@ -3,6 +3,9 @@ package com.alibaba.datax.plugin.writer.kuduwriter;
 import com.alibaba.datax.common.element.Column;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import org.apache.kudu.ColumnSchema;
+import org.apache.kudu.Schema;
+import org.apache.kudu.Type;
 import org.apache.kudu.client.*;
 import com.alibaba.datax.common.element.Record;
 import com.alibaba.datax.common.exception.DataXException;
@@ -10,11 +13,15 @@ import com.alibaba.datax.common.plugin.RecordReceiver;
 import com.alibaba.datax.common.spi.Writer;
 import com.alibaba.datax.common.util.Configuration;
 import org.apache.kudu.client.KuduClient;
+import org.apache.kudu.shaded.com.google.common.collect.ImmutableList;
+import org.apache.kudu.shaded.com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
 import com.alibaba.fastjson.JSON;
 
 import static com.alibaba.datax.plugin.writer.kuduwriter.KuduWriterErrorCode.*;
@@ -104,6 +111,7 @@ public class KuduWriter extends Writer {
             encoding = sliceConfig.getUnnecessaryValue(Key.KEY_KUDU_ENCODE, "utf-8", KUDU_ERROR_CODEING);
             //获取kudu.master
             kudu_master=sliceConfig.getNecessaryValue(Key.KEY_KUDU_MASTER,KUDU_ERROR_MASTER);
+            List<String> primaryKeyNames = new ArrayList<String>();
 
             //添加主键
             //primaryKey_idex [{"index":0,"name":"g_uid","type":"string"}]
@@ -126,6 +134,7 @@ public class KuduWriter extends Writer {
                     else {
                         kuduColumnsList.add(obj2.getInteger("index"),obj2);  //添加主键列和主键列的索引号
                     }
+                    primaryKeyNames.add(obj2.get("name").toString());
                 }
             }
 
@@ -151,11 +160,29 @@ public class KuduWriter extends Writer {
 
             //初始化kuduclient
             log.info("初始化kuduclient");
-            kuduClient = new KuduClient.KuduClientBuilder(kudu_master).build();
+            kuduClient = new KuduClient.KuduClientBuilder(kudu_master).defaultOperationTimeoutMs(600000).build();
             session = kuduClient.newSession();
+            session.setTimeoutMillis(600000);
             try {
-                kuduTable= kuduClient.openTable(tableName);
+//                kuduClient.deleteTable(tableName);
+                List<ColumnSchema> columnSchemas = Lists.newArrayList();
+                for(JSONObject columnJson : kuduColumnsList) {
+                    ColumnSchema columnSchema = null;
+                    if(primaryKeyNames.contains(columnJson.get("name").toString())) {
+                        columnSchema = new ColumnSchema.ColumnSchemaBuilder(columnJson.get("name").toString(), Type.STRING).key(true).build();
+                    } else {
+                        columnSchema = new ColumnSchema.ColumnSchemaBuilder(columnJson.get("name").toString(), Type.STRING).key(false).build();
+                    }
+                    columnSchemas.add(columnSchema);
+                }
+                Schema schema = new Schema(columnSchemas);
+                List<String> hashKeys = primaryKeyNames;
+                CreateTableOptions cto = new CreateTableOptions();
+                cto.addHashPartitions(hashKeys, 2);
+                cto.setNumReplicas(1);
+                kuduClient.createTable(tableName, schema, cto);
 
+                kuduTable= kuduClient.openTable(tableName);
             } catch (KuduException e) {
                 e.printStackTrace();
             }
@@ -166,8 +193,8 @@ public class KuduWriter extends Writer {
             if(kuduClient != null) {
                 try {
                     //关闭kuduclient
-                    kuduClient.shutdown();
-                    kuduClient.close();
+//                    kuduClient.shutdown();
+//                    kuduClient.close();
                 } catch (Exception e) {
                     log.error("close table "+tableName+" failed.", e);
                     throw DataXException.asDataXException(KUDU_RUNNING_ERROR, KUDU_RUNNING_ERROR.getDescription());
