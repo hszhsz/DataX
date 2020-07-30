@@ -89,6 +89,8 @@
         <module>cassandrawriter</module>
         <module>kuduwriter</module>
         <module>db2writer</module>
+        <module>s3reader</module>
+        <module>s3writer</module>
 
         <!-- common support module -->
         <module>plugin-rdbms-util</module>
