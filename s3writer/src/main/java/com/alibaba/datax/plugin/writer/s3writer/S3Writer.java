@@ -333,6 +333,7 @@ public class S3Writer extends Writer {
                 uploadPartRequest.setUploadId(uploadId);
                 uploadPartRequest.setPartNumber(partNumber);
                 uploadPartRequest.setInputStream(inputStream);
+                uploadPartRequest.setPartSize(byteArray.length);
 
                 UploadPartResult uploadPartResult = S3ClientUtil.uploadPart(s3Client, uploadPartRequest);
 
