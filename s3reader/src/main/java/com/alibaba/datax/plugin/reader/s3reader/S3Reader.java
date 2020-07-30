@@ -215,24 +215,22 @@ public class S3Reader extends Reader {
         }
 
         private List<String> getRemoteObjects(String prefix) {
-            LOG.debug(String.format("S3批量文件前缀 : %s", prefix));
+            LOG.info(String.format("S3批量文件前缀 : %s", prefix));
             LinkedList<String> remoteObjects = new LinkedList<>();
             AmazonS3 s3Client = S3ClientUtil.initOssClient(readerOriginConfig);
             String bucket = readerOriginConfig.getString(Key.BUCKET);
             try {
                 List<String> objectList;
-                do {
-                    if (remoteObjects.isEmpty()) {
-                        objectList = S3ClientUtil.listObjects(s3Client, bucket, prefix);
-                    } else {
-                        String objectsLast = remoteObjects.getLast();
-                        objectList = S3ClientUtil.listObjects(s3Client, bucket, prefix, objectsLast);
-                    }
-                    for (String objectKey : objectList) {
-                        LOG.debug(String.format("找到文件 : %s", objectKey));
-                        remoteObjects.add(objectKey);
-                    }
-                } while (!objectList.isEmpty());
+                if (remoteObjects.isEmpty()) {
+                    objectList = S3ClientUtil.listObjects(s3Client, bucket, prefix);
+                } else {
+                    String objectsLast = remoteObjects.getLast();
+                    objectList = S3ClientUtil.listObjects(s3Client, bucket, prefix, objectsLast);
+                }
+                for (String objectKey : objectList) {
+                    LOG.info(String.format("找到文件 : %s", objectKey));
+                    remoteObjects.add(objectKey);
+                }
             } catch (IllegalArgumentException e) {
                 throw DataXException.asDataXException(S3ReaderErrorCode.S3_EXCEPTION, e.getMessage());
             }

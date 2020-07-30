@@ -97,8 +97,10 @@ public class S3ClientUtil {
 
         try {
             ListObjectsV2Result listObjects = s3Client.listObjectsV2(listObjectsV2Request);
-            log.info("s3 file list success");
-            return listObjects.getObjectSummaries().stream().map(S3ObjectSummary::getKey).collect(Collectors.toList());
+            List<String> result =  listObjects.getObjectSummaries().stream().map(S3ObjectSummary::getKey).collect(Collectors.toList());
+            log.info("s3 file list success,bucket:{},prefix:{},file size:{}",bucket,prefix,result.size());
+
+            return result;
         } catch (Throwable e) {
             log.error("S3文件列表拉取失败", e);
             return Collections.emptyList();
