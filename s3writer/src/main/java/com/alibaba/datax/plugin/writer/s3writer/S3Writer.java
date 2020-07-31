@@ -1,6 +1,8 @@
 package com.alibaba.datax.plugin.writer.s3writer;
 
+import com.alibaba.datax.common.element.Column;
 import com.alibaba.datax.common.element.Record;
+import com.alibaba.datax.common.element.StringColumn;
 import com.alibaba.datax.common.exception.DataXException;
 import com.alibaba.datax.common.plugin.RecordReceiver;
 import com.alibaba.datax.common.spi.Writer;
@@ -12,6 +14,7 @@ import com.alibaba.datax.plugin.unstructuredstorage.writer.UnstructuredWriter;
 import com.alibaba.datax.plugin.writer.s3writer.util.S3ClientUtil;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.*;
+import jdk.nashorn.internal.codegen.types.Type;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -20,12 +23,11 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.StringWriter;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.StringJoiner;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * S3 writer
@@ -225,6 +227,19 @@ public class S3Writer extends Writer {
                 // warn
                 boolean needInitMultipartTransform = true;
                 while ((record = lineReceiver.getFromReader()) != null) {
+                    //remove \n
+                    for(int i = 0; i < record.getColumnNumber(); i ++) {
+                        Column column = record.getColumn(i);
+                        if(column.getType() == Column.Type.STRING) {
+                            if(null != column.getRawData()) {
+                                String rawData = column.getRawData().toString();
+                                String newData = rawData.replace("\n", "    ")
+                                        .replace("\t","    ");
+                                Column newColumn = new StringColumn(newData);
+                                record.setColumn(i, newColumn);
+                            }
+                        }
+                    }
                     gotData = true;
                     // init:begin new multipart upload
                     if (needInitMultipartTransform) {
