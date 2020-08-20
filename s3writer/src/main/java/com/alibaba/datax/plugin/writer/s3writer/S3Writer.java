@@ -300,24 +300,26 @@ public class S3Writer extends Writer {
 
                 if (!gotData) {
                     LOG.info("Receive no data from the source.");
-                    currentInitiateMultipartUploadId = S3ClientUtil.createMultipartUpload(s3Client, bucket, currentObject);
-                    currentPartETags = new ArrayList<>();
-                    // each object's header
-                    if (null != this.header && !this.header.isEmpty()) {
-                        unstructuredWriter.writeOneRecord(this.header);
+//                    currentInitiateMultipartUploadId = S3ClientUtil.createMultipartUpload(s3Client, bucket, currentObject);
+//                    currentPartETags = new ArrayList<>();
+//                    // each object's header
+//                    if (null != this.header && !this.header.isEmpty()) {
+//                        unstructuredWriter.writeOneRecord(this.header);
+//                    }
+                } else {
+                    // warn: may be some data stall in sb
+                    if (0 < sb.length()) {
+                        this.uploadOnePart(sw, currentPartNumber, currentInitiateMultipartUploadId,
+                                currentPartETags, currentObject);
                     }
+                    CompleteMultipartUploadResult response = S3ClientUtil.completeMultipartUpload(s3Client, bucket, currentObject,
+                            currentInitiateMultipartUploadId, currentPartETags);
+                    LOG.info(String.format("final object etag is:[%s]", response.getETag()));
                 }
-                // warn: may be some data stall in sb
-                if (0 < sb.length()) {
-                    this.uploadOnePart(sw, currentPartNumber, currentInitiateMultipartUploadId,
-                            currentPartETags, currentObject);
-                }
-                CompleteMultipartUploadResult response = S3ClientUtil.completeMultipartUpload(s3Client, bucket, currentObject,
-                        currentInitiateMultipartUploadId, currentPartETags);
-                LOG.info(String.format("final object etag is:[%s]", response.getETag()));
             } catch (Exception e) {
                 // 脏数据UnstructuredStorageWriterUtil.transportOneRecord已经记录,header
                 // 都是字符串不认为有脏数据
+                e.printStackTrace();
                 throw DataXException.asDataXException(S3WriterErrorCode.Write_OBJECT_ERROR, e.getMessage());
             }
             LOG.info("end do write");
