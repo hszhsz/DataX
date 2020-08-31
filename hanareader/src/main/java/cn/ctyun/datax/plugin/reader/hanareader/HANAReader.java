@@ -42,7 +42,10 @@ public class HANAReader extends Reader {
         @Override
         public void preCheck(){
             int fetchSize = this.originalConfig.getInt(KeyConstant.FETCH_SIZE);
-            String querySql = originalConfig.getString("querySql");
+            List<Object> connList = this.originalConfig.getList(KeyConstant.CONN_MARK, Object.class);
+            Configuration connConf = Configuration.from(connList.get(0).toString());
+
+            String querySql = connConf.getList("querySql",Object.class).get(0).toString();
             Connection conn = HANADBUtil.connect(this.originalConfig);
             try {
                 HANADBUtil.query(conn, querySql, fetchSize);

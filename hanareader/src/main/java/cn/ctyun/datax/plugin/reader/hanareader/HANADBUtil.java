@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
+import java.util.List;
 
 /**
  * HANA DB UTIL
@@ -26,12 +27,13 @@ public class HANADBUtil {
      */
     public static Connection connect(Configuration conf) {
         try {
-            conf.getNecessaryValue(KeyConstant.HANA_USERNAME, HANAReaderErrorCode.CONN_DB_ERROR);
-            conf.getNecessaryValue(KeyConstant.HANA_PASSWORD, HANAReaderErrorCode.CONN_DB_ERROR);
-            conf.getNecessaryValue(KeyConstant.JDBC_URL, HANAReaderErrorCode.CONN_DB_ERROR);
+            List<Object> connList = conf.getList(KeyConstant.CONN_MARK, Object.class);
+            Configuration connConf = Configuration.from(connList.get(0).toString());
+
             String userName = conf.getString(KeyConstant.HANA_USERNAME);
             String password = conf.getString(KeyConstant.HANA_PASSWORD);
-            String url = conf.getString(KeyConstant.JDBC_URL);
+
+            String url = connConf.getString(KeyConstant.JDBC_URL);
             Class.forName(KeyConstant.DRIVER);
             return DriverManager.getConnection(url, userName, password);
         } catch (ClassNotFoundException e) {
