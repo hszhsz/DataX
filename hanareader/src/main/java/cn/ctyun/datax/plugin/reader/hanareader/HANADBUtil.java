@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
+import java.util.List;
 
 /**
  * HANA DB UTIL
@@ -26,12 +27,14 @@ public class HANADBUtil {
      */
     public static Connection connect(Configuration conf) {
         try {
-            conf.getNecessaryValue(KeyConstant.HANA_USERNAME, HANAReaderErrorCode.CONN_DB_ERROR);
-            conf.getNecessaryValue(KeyConstant.HANA_PASSWORD, HANAReaderErrorCode.CONN_DB_ERROR);
-            conf.getNecessaryValue(KeyConstant.JDBC_URL, HANAReaderErrorCode.CONN_DB_ERROR);
+            List<Object> connList = conf.getList(KeyConstant.CONN_MARK, Object.class);
+            Configuration connConf = Configuration.from(connList.get(0).toString());
+
             String userName = conf.getString(KeyConstant.HANA_USERNAME);
             String password = conf.getString(KeyConstant.HANA_PASSWORD);
-            String url = conf.getString(KeyConstant.JDBC_URL);
+
+            String url = connConf.getList(KeyConstant.JDBC_URL,Object.class).get(0).toString();
+            LOG.info("url:{},userName:{},password:{}",url,userName,password);
             Class.forName(KeyConstant.DRIVER);
             return DriverManager.getConnection(url, userName, password);
         } catch (ClassNotFoundException e) {
@@ -166,5 +169,52 @@ public class HANADBUtil {
             }
         }
         return record;
+    }
+
+    public static void main(String args[]) {
+//        String connectionString = "jdbc:sap://192.168.33.131:30041/SAPHANADB?reconnect";
+//        String user = "ZJDBC01";
+//        String password = "YKbasis123";
+
+        String connectionString = "jdbc:sap://192.168.33.132:30056/SAPHANADB?reconnect";
+        String user = "ZJDBC01";
+        String password = "YKbasis123";
+
+        try {
+            Class.forName(KeyConstant.DRIVER);
+            Connection connection = DriverManager.getConnection(connectionString, user, password);
+            System.out.println("Connection to HANA successful!");
+            Statement stmt = connection.createStatement();
+            ResultSet resultSet = stmt.executeQuery("SELECT MANDT , OBJNR , GJAHR , KSTAR , HRKFT , MEINH , MGEFL , EIGEN  from SAPHANADB.COKA");
+//            ResultSet resultSet = stmt.executeQuery("SELECT *  from SAPHANADB.TVKDT");
+//            System.out.println(resultSet.getMetaData().getColumnName(1));
+//            System.out.println(resultSet.getMetaData().getColumnName(2));
+//            System.out.println(resultSet.getMetaData().getColumnName(3));
+//            System.out.println(resultSet.getMetaData().getColumnName(4));
+//            resultSet.next();
+            String hello = resultSet.getString(1);
+            System.out.println(hello);
+
+//            DatabaseMetaData dbmd = connection.getMetaData();
+//            ResultSet rs = dbmd.getColumns(null, "SAPHANADB", "TVKDT", null);
+//            int columnIndex = 0;
+//            while(rs != null && rs.next()) {
+//                String tableCat = rs.getString("TABLE_CAT");  //表类别（可能为空）
+//                String tableSchemaName = rs.getString("TABLE_SCHEM");  //表模式（可能为空）,在oracle中获取的是命名空间,其它数据库未知
+//                String tableName_ = rs.getString("TABLE_NAME");  //表名
+//                String columnName = rs.getString("COLUMN_NAME");  //列名
+//                int dataType = rs.getInt("DATA_TYPE");     //对应的java.sql.Types的SQL类型(列类型ID)
+//                String dataTypeName = rs.getString("TYPE_NAME");  //java.sql.Types类型名称(列类型名称)
+//                int columnSize = rs.getInt("COLUMN_SIZE");  //列大小
+//                int nullAble = rs.getInt("NULLABLE");  //是否允许为null
+//                String remarks = rs.getString("REMARKS");  //列描述
+//
+//                System.out.println("columnName:" + columnName + ",dataTypeName:" + dataTypeName);
+//            }
+        } catch (ClassNotFoundException e) {
+            throw DataXException.asDataXException(HANAReaderErrorCode.CLASS_NOT_FOUND, "请联系开发人员");
+        } catch (SQLException e) {
+            throw DataXException.asDataXException(HANAReaderErrorCode.CONN_DB_ERROR, String.format("HANA连接失败[%s]", e.getMessage()));
+        }
     }
 }

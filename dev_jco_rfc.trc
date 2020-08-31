@@ -1,0 +1,153 @@
+
+**** Error file opened at 20200823 174200 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Sun Aug 23 17:42:00,877<    RfcException:
+    message: Parameter SAP client ('client') needs to be a three digit number string instead of 'D01'
+    return code: RFC_INVALID_PARAMETER (19)
+    error group: 101
+    key: RFC_ERROR_PROGRAM
+	at com.sap.conn.rfc.api.RfcOptions.checkLogonData(RfcOptions.java:209)
+	at com.sap.conn.rfc.api.RfcOptions.checkParameters(RfcOptions.java:348)
+	at com.sap.conn.jco.rt.MiddlewareJavaRfc$JavaRfcClient.initialize(MiddlewareJavaRfc.java:1365)
+	at com.sap.conn.jco.rt.MiddlewareJavaRfc$JavaRfcClient.connect(MiddlewareJavaRfc.java:1395)
+	at com.sap.conn.jco.rt.ClientConnection.connect(ClientConnection.java:725)
+	at com.sap.conn.jco.rt.RepositoryConnection.connect(RepositoryConnection.java:52)
+	at com.sap.conn.jco.rt.PoolingFactory.init(PoolingFactory.java:115)
+	at com.sap.conn.jco.rt.ConnectionManager.createFactory(ConnectionManager.java:350)
+	at com.sap.conn.jco.rt.DefaultConnectionManager.createFactory(DefaultConnectionManager.java:46)
+	at com.sap.conn.jco.rt.ConnectionManager.getFactory(ConnectionManager.java:324)
+	at com.sap.conn.jco.rt.RfcDestination.getSystemID(RfcDestination.java:1011)
+	at com.sap.conn.jco.rt.RepositoryManager.getRepository(RepositoryManager.java:31)
+	at com.sap.conn.jco.rt.RfcDestination.initRepository(RfcDestination.java:966)
+	at com.sap.conn.jco.rt.RfcDestination.getRepository(RfcDestination.java:1077)
+	at com.sap.conn.jco.rt.RfcDestination.getRepository(RfcDestination.java:33)
+	at jco.RfcManager.getFunction(RfcManager.java:55)
+	at jco.JCOTest.getUser(JCOTest.java:18)
+	at jco.JCOTest.main(JCOTest.java:14)
+
+
+**** Error file opened at 20200823 174453 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Sun Aug 23 17:44:53,626<    RfcException:
+    message: Connect to SAP gateway failed
+Connection parameters: TYPE=A DEST=ABAP_AS_POOL ASHOST=192.168.33.131 SYSNR=00 PCS=1
+
+LOCATION    CPIC (TCP/IP) on local host heshaozhongs-MacBook-Pro.local
+ERROR       partner '192.168.33.131:3300' not reached
+TIME        Sun Aug 23 17:44:53 2020
+RELEASE     720
+COMPONENT   NI (network interface)
+VERSION     40
+RC          -10
+MODULE      nibuf.cpp
+LINE        4658
+DETAIL      NiBufIConnect: connection pending after 60000ms
+SYSTEM CALL connect
+ERRNO       36
+ERRNO TEXT  Operation now in progress
+COUNTER     3
+
+    return code: RFC_FAILURE (1)
+    error group: 102
+    key: RFC_ERROR_COMMUNICATION
+
+**** Error file opened at 20200823 175558 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Sun Aug 23 17:55:58,314<    >RfcGetException rc (7) message: Client 001 is not available in this system
+<RfcGetException
+
+
+**** Error file opened at 20200823 175721 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Sun Aug 23 17:57:21,222<    RfcException:
+    message: Connect to SAP gateway failed
+Connection parameters: TYPE=A DEST=ABAP_AS_POOL ASHOST=192.168.33.131 SYSNR=00 PCS=1
+
+LOCATION    CPIC (TCP/IP) on local host heshaozhongs-MacBook-Pro.local
+ERROR       partner '192.168.33.131:3300' not reached
+TIME        Sun Aug 23 17:57:21 2020
+RELEASE     720
+COMPONENT   NI (network interface)
+VERSION     40
+RC          -10
+MODULE      nibuf.cpp
+LINE        4658
+DETAIL      NiBufIConnect: connection pending after 60000ms
+SYSTEM CALL connect
+ERRNO       36
+ERRNO TEXT  Operation now in progress
+COUNTER     3
+
+    return code: RFC_FAILURE (1)
+    error group: 102
+    key: RFC_ERROR_COMMUNICATION
+
+**** Error file opened at 20200823 183409 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Sun Aug 23 18:34:09,420<    >RfcGetException rc (7) message: Client 001 is not available in this system
+<RfcGetException
+
+
+**** Error file opened at 20200823 183445 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Sun Aug 23 18:34:45,421<    >RfcGetException rc (7) message: Client 002 is not available in this system
+<RfcGetException
+
+
+**** Error file opened at 20200823 183515 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Sun Aug 23 18:35:15,525<    >RfcGetException rc (7) message: Name or password is incorrect (repeat logon)
+<RfcGetException
+
+
+**** Error file opened at 20200823 184247 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Sun Aug 23 18:42:47,175<    >RfcGetException rc (7) message: Name or password is incorrect (repeat logon)
+<RfcGetException
+
+
+**** Error file opened at 20200823 185811 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Sun Aug 23 18:58:11,543<    >RfcGetException rc (7) message: Name or password is incorrect (repeat logon)
+<RfcGetException
+
+
+**** Error file opened at 20200823 192802 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Sun Aug 23 19:28:02,759<    >RfcGetException rc (7) message: Name or password is incorrect (repeat logon)
+<RfcGetException
+
+
+**** Error file opened at 20200823 193435 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Sun Aug 23 19:34:35,101<    >RfcGetException rc (7) message: ##.#####,####
+<RfcGetException
+
+
+**** Error file opened at 20200823 194133 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Sun Aug 23 19:41:33,858<    >RfcGetException rc (7) message: ##.#####,####
+<RfcGetException
+
+
+**** Error file opened at 20200823 194939 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Sun Aug 23 19:49:39,771<    >RfcGetException rc (7) message: ##.#####,####
+<RfcGetException
+
+
+**** Error file opened at 20200823 195114 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Sun Aug 23 19:51:14,665<    >RfcGetException rc (7) message: Name or password is incorrect (repeat logon)
+<RfcGetException
+
+
+**** Error file opened at 20200824 172419 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Mon Aug 24 17:24:19,753<    RfcException:
+    message: Connect to SAP gateway failed
+Connection parameters: TYPE=A DEST=ABAP_AS_WITH_POOL ASHOST=192.168.33.21 SYSNR=00 PCS=1
+
+LOCATION    CPIC (TCP/IP) on local host heshaozhongs-MacBook-Pro.local
+ERROR       partner '192.168.33.21:3300' not reached
+TIME        Mon Aug 24 17:24:19 2020
+RELEASE     720
+COMPONENT   NI (network interface)
+VERSION     40
+RC          -10
+MODULE      nibuf.cpp
+LINE        4658
+DETAIL      NiBufIConnect: connection pending after 60000ms
+SYSTEM CALL connect
+ERRNO       36
+ERRNO TEXT  Operation now in progress
+COUNTER     3
+
+    return code: RFC_FAILURE (1)
+    error group: 102
+    key: RFC_ERROR_COMMUNICATION

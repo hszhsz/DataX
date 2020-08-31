@@ -42,7 +42,13 @@ public class HANAReader extends Reader {
         @Override
         public void preCheck(){
             int fetchSize = this.originalConfig.getInt(KeyConstant.FETCH_SIZE);
-            String querySql = originalConfig.getString("querySql");
+
+            List<Object> connList = this.originalConfig.getList(KeyConstant.CONN_MARK, Object.class);
+            Configuration connConf = Configuration.from(connList.get(0).toString());
+
+            String querySql = connConf.getList("querySql",Object.class).get(0).toString();
+            LOG.info("querySql:{}",querySql);
+
             Connection conn = HANADBUtil.connect(this.originalConfig);
             try {
                 HANADBUtil.query(conn, querySql, fetchSize);
@@ -91,7 +97,10 @@ public class HANAReader extends Reader {
         @Override
         public void startRead(RecordSender recordSender) {
             int fetchSize = this.readerSliceConfig.getInt(KeyConstant.FETCH_SIZE);
-            String querySql = readerSliceConfig.getString("querySql");
+            List<Object> connList = this.readerSliceConfig.getList(KeyConstant.CONN_MARK, Object.class);
+            Configuration connConf = Configuration.from(connList.get(0).toString());
+
+            String querySql = connConf.getList("querySql",Object.class).get(0).toString();
             LOG.info("Begin to read record by Sql: [{}\n] {}.", querySql, this.basicMsg);
             PerfRecord queryPerfRecord = new PerfRecord(this.taskGroupId, this.taskId, PerfRecord.PHASE.SQL_QUERY);
             queryPerfRecord.start();
