@@ -1,4 +1,4 @@
-package com.alibaba.datax.plugin.writer.hdfswriter;
+package com.alibaba.datax.plugin.writer.alluxiowriter;
 
 /**
  * Created by shf on 15/10/8.
@@ -7,7 +7,7 @@ public class Key {
     // must have
     public static final String PATH = "path";
     //must have
-    public final static String DEFAULT_FS = "defaultFS";
+    public final static String MASTER_HOSTNAME = "masterHostName";
     //must have
     public final static String FILE_TYPE = "fileType";
     // must have

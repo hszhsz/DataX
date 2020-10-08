@@ -66,6 +66,7 @@
         <module>cassandrareader</module>
 
         <!-- writer -->
+        <module>alluxiowriter</module>
         <module>mysqlwriter</module>
         <module>drdswriter</module>
         <module>odpswriter</module>

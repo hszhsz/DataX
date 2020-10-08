@@ -1,7 +1,7 @@
 {
-    "name": "hdfswriter",
+    "name": "alluxiowriter",
     "parameter": {
-        "defaultFS": "",
+        "masterHostName": "",
         "fileType": "",
         "path": "",
         "fileName": "",

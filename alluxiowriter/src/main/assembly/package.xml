@@ -14,21 +14,21 @@
 				<include>plugin.json</include>
 				<include>plugin_job_template.json</include>
 			</includes>
-			<outputDirectory>plugin/writer/hdfswriter</outputDirectory>
+			<outputDirectory>plugin/writer/alluxiowriter</outputDirectory>
 		</fileSet>
 		<fileSet>
 			<directory>target/</directory>
 			<includes>
-				<include>hdfswriter-0.0.1-SNAPSHOT.jar</include>
+				<include>alluxiowriter-0.0.1-SNAPSHOT.jar</include>
 			</includes>
-			<outputDirectory>plugin/writer/hdfswriter</outputDirectory>
+			<outputDirectory>plugin/writer/alluxiowriter</outputDirectory>
 		</fileSet>
 	</fileSets>
 
 	<dependencySets>
 		<dependencySet>
 			<useProjectArtifact>false</useProjectArtifact>
-			<outputDirectory>plugin/writer/hdfswriter/libs</outputDirectory>
+			<outputDirectory>plugin/writer/alluxiowriter/libs</outputDirectory>
 			<scope>runtime</scope>
 		</dependencySet>
 	</dependencySets>
