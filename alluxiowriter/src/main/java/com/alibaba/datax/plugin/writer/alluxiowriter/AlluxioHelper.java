@@ -250,11 +250,14 @@ public  class AlluxioHelper {
                         if (null != column.getRawData()) {
                             boolean isDateColumn = column instanceof DateColumn;
                             if (!isDateColumn) {
-                                splitedRows.add(column.asString());
+                                if(StringUtils.isNotEmpty(column.asString())) {
+                                    splitedRows.add(column.asString().replace("\t","    "));
+                                } else {
+                                    splitedRows.add(column.asString());
+                                }
                             } else {
                                 if (null != dateParse) {
-                                    splitedRows.add(dateParse.format(column
-                                            .asDate()));
+                                    splitedRows.add(dateParse.format(column.asDate()));
                                 } else {
                                     splitedRows.add(column.asString());
                                 }
