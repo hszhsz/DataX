@@ -63,10 +63,6 @@ public class ReaderProxy {
             while (true) {
                 try {
                     odpsRecord = recordReader.read();
-                    for (int i = 0; i < odpsRecord.getColumns().length; i++) {
-                        LOG.info(" ********** odpsRecord {}",odpsRecord.getColumns()[i]);
-                    }
-
                 } catch(Exception e) {
                     //odps read 异常后重试10次
                     LOG.warn("warn : odps read exception: {}", e.getMessage());

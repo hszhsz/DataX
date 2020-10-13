@@ -20,5 +20,7 @@ public class Key {
     public static final String METRIC_SCOPE_ID = "metricScopeId";
     public static final String CLUSTER_NAME = "clusterName";
     public static final String COLUMN = "column";
+    public static final String TIMESTAMP_FIELD = "timestamp";
+    public static final String TIMESTAMP_FORMAT = "timestampFormat";
 
 }

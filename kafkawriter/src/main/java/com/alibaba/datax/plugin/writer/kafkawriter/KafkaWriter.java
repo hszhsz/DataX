@@ -10,6 +10,8 @@ import org.apache.kafka.clients.producer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -140,6 +142,8 @@ public class KafkaWriter extends Writer {
 
         private String recordToString(Record record) {
             List<String> list = this.conf.getList(Key.COLUMN, String.class);
+            String timestampField = this.conf.getString(Key.TIMESTAMP_FIELD);
+            String timestampFormat = this.conf.getString(Key.TIMESTAMP_FORMAT);
             int recordLength = record.getColumnNumber();
             if (0 == recordLength) {
                 return NEWLINE_FLAG;
@@ -149,9 +153,15 @@ public class KafkaWriter extends Writer {
             JSONObject diceLogFields = new JSONObject();
             JSONObject diceLogTags = new JSONObject();
             StringBuilder sb = new StringBuilder();
+            Object timeStampValue=null;
+            log.info(" ******** timestampField {}",timestampField);
             for (int i = 0; i < recordLength; i++) {
 
                 column = record.getColumn(i);
+                if(list.get(i).equals(timestampField)){
+                    timeStampValue= column.getRawData();
+                    log.info(" ******** timeStampValue {}",timeStampValue);
+                }
                 log.info("*********{} {}",column.getRawData(),list.get(i));
                 diceLogFields.put(list.get(i), column.getRawData());
                 if(column.getRawData()!=null){
@@ -170,7 +180,25 @@ public class KafkaWriter extends Writer {
             diceLogTags.put("state", "running");
             diceLogData.put("fields", diceLogFields);
             diceLogData.put("tags", diceLogTags);
-            diceLogData.put("timestamp", System.currentTimeMillis() * 1000 * 1000);
+            if(timeStampValue!=null){
+                try {
+                    SimpleDateFormat sdf=new SimpleDateFormat(timestampFormat);
+                    long timeValue = sdf.parse(timeStampValue.toString()).getTime() * 1000 * 1000;
+                    log.info("timestamp receive {} data {} value {}",timestampField,timeStampValue,timeValue);
+                    diceLogData.put("timestamp", timeValue);
+                } catch (NumberFormatException e) {
+                    e.printStackTrace();
+                    diceLogData.put("timestamp", System.currentTimeMillis() * 1000 * 1000);
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                    diceLogData.put("timestamp", System.currentTimeMillis() * 1000 * 1000);
+
+                }
+
+            }else{
+                diceLogData.put("timestamp", System.currentTimeMillis() * 1000 * 1000);
+
+            }
 
 
             return diceLogData.toJSONString();
