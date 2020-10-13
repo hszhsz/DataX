@@ -63,6 +63,10 @@ public class ReaderProxy {
             while (true) {
                 try {
                     odpsRecord = recordReader.read();
+                    for (int i = 0; i < odpsRecord.getColumns().length; i++) {
+                        LOG.info(" ********** odpsRecord {}",odpsRecord.getColumns()[i]);
+                    }
+
                 } catch(Exception e) {
                     //odps read 异常后重试10次
                     LOG.warn("warn : odps read exception: {}", e.getMessage());
@@ -180,12 +184,12 @@ public class ReaderProxy {
 
     /**
      * TODO warn: odpsRecord 的 String 可能获取出来的是 binary
-     * 
+     *
      * warn: there is no dirty data in reader plugin, so do not handle dirty
      * data with TaskPluginCollector
-     * 
+     *
      * warn: odps only support BIGINT && String partition column actually
-     * 
+     *
      * @param odpsRecord
      *            every line record of odps table
      * @param dataXRecord
