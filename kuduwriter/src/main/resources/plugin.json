@@ -1,6 +1,6 @@
 {
-    "name": "kuduwriter",
-    "class": "com.alibaba.datax.plugin.writer.kuduwriter.KuduWriter",
-    "description": "useScene: prod. mechanism: via FileSystem connect KUDU write data concurrent.",
-    "developer": ""
+    "name": "cassandrawriter",
+    "class": "com.alibaba.datax.plugin.writer.cassandrawriter.CassandraWriter",
+    "description": "useScene: prod. mechanism: Jdbc connection using the database, execute insert sql. warn: The more you know about the database, the less problems you encounter.",
+    "developer": "terminus"
 }
