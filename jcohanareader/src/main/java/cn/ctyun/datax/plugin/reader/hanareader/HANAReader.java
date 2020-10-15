@@ -92,7 +92,7 @@ public class HANAReader extends Reader {
         public void startRead(RecordSender recordSender) {
             try {
                 JCoDestination destination = JCoDestinationManager.getDestination(ABAP_AS_POOLED);
-                JCoFunction function = destination.getRepository().getFunction("BAPI_" + tableName);//从对象仓库中获取 RFM 函数：获取公司列表
+                JCoFunction function = destination.getRepository().getFunction("BAPI_" + tableName);
                 if (function == null)
                     throw new RuntimeException("BAPI_" + tableName + " not found in SAP.");
                 try {
