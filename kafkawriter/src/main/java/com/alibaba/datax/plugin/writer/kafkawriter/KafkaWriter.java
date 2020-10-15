@@ -12,7 +12,11 @@ import org.slf4j.LoggerFactory;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Properties;
 
@@ -182,17 +186,14 @@ public class KafkaWriter extends Writer {
             diceLogData.put("tags", diceLogTags);
             if(timeStampValue!=null){
                 try {
-                    SimpleDateFormat sdf=new SimpleDateFormat(timestampFormat);
-                    long timeValue = sdf.parse(timeStampValue.toString()).getTime() * 1000 * 1000;
-                    log.info("timestamp receive {} data {} value {}",timestampField,timeStampValue,timeValue);
+                    DateTimeFormatter dtf= DateTimeFormatter.ofPattern(timestampFormat);
+                    LocalDateTime parse = LocalDateTime.parse(timeStampValue.toString(), dtf);
+                    long timeValue =Date.from(parse.atZone(ZoneId.systemDefault()).toInstant()).getTime()* 1000 * 1000;
+                    log.info("timestamp receive {} data {} timestampFormat {} value {}",timestampField,timeStampValue,timestampFormat,timeValue);
                     diceLogData.put("timestamp", timeValue);
-                } catch (NumberFormatException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                     diceLogData.put("timestamp", System.currentTimeMillis() * 1000 * 1000);
-                } catch (ParseException e) {
-                    e.printStackTrace();
-                    diceLogData.put("timestamp", System.currentTimeMillis() * 1000 * 1000);
-
                 }
 
             }else{
@@ -226,6 +227,17 @@ public class KafkaWriter extends Writer {
                     logger.debug("Elapsed time for send: {}", eventElapsedTime);
                 }
             }
+        }
+
+        public static void main(String[] args) {
+            try {
+                SimpleDateFormat sdf=new SimpleDateFormat("yyyyMMddHHmmss");
+                long timeValue = sdf.parse("20200917000000").getTime() * 1000 * 1000;
+                System.out.println(timeValue);
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+
         }
 
     }
