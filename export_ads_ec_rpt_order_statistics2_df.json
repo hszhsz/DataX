@@ -1,0 +1,73 @@
+{
+    "content": [{
+      "writer": {
+        "name": "mysqlwriter",
+        "parameter": {
+            "writeMode": "update",
+            "username": "kingdee",
+            "password": "xhKing@20170830",
+            "column": [
+                 "date"     
+                ,"lv1_category_id"
+                ,"lv2_category_id"
+                ,"lv3_category_id"
+                ,"lv4_category_id"
+                ,"shop_id"
+                ,"shop_name"
+                ,"source"
+                ,"channel"
+                ,"order_type"
+                ,"biz_source"
+                ,"auth_id"
+                ,"order_quantity"
+                ,"order_amount"
+                ,"pay_quantity"
+                ,"pay_amount"
+                ,"finish_quantity"
+                ,"finish_amount"        
+            ],
+            "session": [
+                "set session sql_mode='ANSI'"
+            ],
+            "preSql": [
+                "truncate table bi_order_statistic"
+            ],
+            "connection": [
+                {
+                    "jdbcUrl": "jdbc:mysql://rm-2zexbkm1kfr87u2ab.mysql.rds.aliyuncs.com:3306/xhsd_test2?useUnicode=true&characterEncoding=UTF8&autoReconnect=true&tinyInt1isBit=false",
+                    "table": [
+                        "bi_order_statistic"
+                    ]
+                }
+            ]
+        }
+      },
+        "reader":{
+            "name":"cassandrareader",
+            "parameter":{
+                "connection":{
+                    "distance_max":2,
+                    "distance_min":1,
+                    "host":"172.17.127.73",
+                    "local_max":2,
+                    "local_min":1,
+                    "password":"",
+                    "port":9042,
+                    "username":""
+                },
+                "mode":"normal",
+                "password":"",
+                "allowFilter":true,
+                "querySql":
+                    "select  created_at,lv1,lv2,lv3,backcategory_id,shop_id,shop_name,source,channel,order_type,biz_source,auth_id,order_quantity,order_amount,pay_quantity,pay_amount,finish_quantity,finish_amount from xhsd.ads_ec_order_statistics2_df  where pt='$pt_date'",
+                "splitPk":"a",
+                "username":""
+            }
+        }
+    }],
+    "setting": {
+      "speed": {
+        "channel": "2"
+      }
+    }
+  }

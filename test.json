@@ -1,0 +1,68 @@
+{
+  "job": {
+    "content": [{
+      "writer": {
+        "name": "mysqlwriter",
+        "parameter": {
+          "writeMode": "update",
+          "username": "kingdee",
+          "password": "xhKing@20170830",
+          "column": [
+            "created_at"
+            ,"source"
+          ,"external_source"
+          ,"auth_id"
+          ,"channel"
+          ,"import_type"
+          ,"month_rebuy_user_num"
+          ,"year_rebuy_user_num"
+          ,"month_pay_user_num"
+          ,"year_pay_user_num"
+          ,"month_pay_amount"
+          ],
+          "session": [
+            "set session sql_mode='ANSI'"
+          ],
+          "preSql": [
+            "delete from bi_user_order_dashboard where created_at='$pt_date'"
+          ],
+          "connection": [
+            {
+              "jdbcUrl": "jdbc:mysql://rm-2zexbkm1kfr87u2ab.mysql.rds.aliyuncs.com:3306/xhsd_test?useUnicode=true&characterEncoding=UTF8&autoReconnect=true&tinyInt1isBit=false",
+              "table": [
+                "bi_user_order_dashboard"
+              ]
+            }
+          ]
+        }
+      },
+      "reader":{
+        "name":"cassandrareader",
+        "parameter":{
+          "connection":{
+            "distance_max":2,
+            "distance_min":1,
+            "host":"172.17.127.73",
+            "local_max":2,
+            "local_min":1,
+            "password":"",
+            "port":9042,
+            "username":""
+          },
+          "mode":"normal",
+          "password":"",
+          "allowFilter":true,
+          "querySql":
+          "select pt,source ,external_source ,auth_id ,channel,import_type,month_rebuy_user_num,year_rebuy_user_num,month_pay_user_num,year_pay_user_num,month_pay_amount  from xhsd.ads_ec_user_order_dashboard_df where pt='$pt_date'",
+          "splitPk":"a",
+          "username":""
+        }
+      }
+    }],
+    "setting": {
+      "speed": {
+        "channel": "2"
+      }
+    }
+  }
+}
