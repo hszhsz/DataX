@@ -12,6 +12,7 @@ import java.util.Properties;
  */
 public class SAPConn2 {
     private static final String ABAP_AS_POOLED = "ABAP_AS_WITH_POOL";
+
     static{
         Properties connectProperties = new Properties();
         //服务器
@@ -102,6 +103,61 @@ public class SAPConn2 {
         return destination;
     }
 
+    public static void workWithTable() throws JCoException {
+        JCoDestination destination = JCoDestinationManager.getDestination(ABAP_AS_POOLED);
+        JCoFunction function = destination.getRepository().getFunction("BAPI_COMPANYCODE_GETLIST");//从对象仓库中获取 RFM 函数：获取公司列表
+        if (function == null)
+            throw new RuntimeException("BAPI_COMPANYCODE_GETLIST not found in SAP.");
+        try {
+            function.execute(destination);
+        } catch (AbapException e) {
+            System.out.println(e.toString());
+            return ;
+        }
+
+//        JCoStructure returnStructure = function.getExportParameterList().getStructure("return");
+
+//        //判断读取是否成功
+//        if (!(returnStructure.getString("TYPE").equals("") || returnStructure
+//                .getString("TYPE").equals("S"))) {
+//            throw new RuntimeException(returnStructure.getString("MESSAGE"));
+//        }
+
+        //获取Table参数：COMPANYCODE_LIST
+        JCoTable codes = function.getTableParameterList().getTable("COMPANYCODE_LIST");
+        for (int i = 0; i < codes.getNumRows(); i++) {//遍历Table
+            codes.setRow(i);//将行指针指向特定的索引行
+            System.out.println(codes.getString("COMP_CODE") + '\t'
+                    + codes.getString("COMP_NAME"));
+        }
+//
+//        // move the table cursor to first row
+//        codes.firstRow();//从首行开始重新遍历 codes.nextRow()：如果有下一行，下移一行并返回True
+//        for (int i = 0; i < codes.getNumRows(); i++, codes.nextRow()) {
+//            //进一步获取公司详细信息
+//            function = destination.getRepository().getFunction("BAPI_COMPANYCODE_GETDETAIL");
+//            if (function == null)
+//                throw new RuntimeException("BAPI_COMPANYCODE_GETDETAIL not found in SAP.");
+//
+//            function.getImportParameterList().setValue("COMPANYCODEID", codes.getString("COMP_CODE"));
+//
+//            function.getExportParameterList().setActive("COMPANYCODE_ADDRESS", false);
+//
+//            try {
+//                function.execute(destination);
+//            } catch (AbapException e) {
+//                System.out.println(e.toString());
+//                return ;
+//            }
+//
+//            JCoStructure detail = function.getExportParameterList().getStructure("COMPANYCODE_DETAIL");
+//
+//            System.out.println(detail.getString("COMP_CODE") + '\t'
+//                    + detail.getString("COUNTRY") + '\t'
+//                    + detail.getString("CITY"));
+//        }// for
+    }
+
     public static void main(String[] args) throws Exception{
 //        long startTime=System.currentTimeMillis();
 //        for(int i = 0; i < 500; i++) {
@@ -110,6 +166,7 @@ public class SAPConn2 {
 //        long endTime=System.currentTimeMillis();
 //        float excTime=(float)(endTime-startTime)/1000;
 //        System.out.println("执行时间："+excTime+"s");
-        connect();
+//        connect();
+        workWithTable();
     }
 }

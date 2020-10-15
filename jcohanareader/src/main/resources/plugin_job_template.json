@@ -1,0 +1,16 @@
+{
+    "name": "jcohanareader",
+    "parameter": {
+        "username": "",
+        "password": "",
+        "host":"",
+        "column": [],
+        "connection": [
+            {
+            "jdbcUrl": [],
+            "table": []
+            }
+        ],
+        "where": ""
+    }
+}

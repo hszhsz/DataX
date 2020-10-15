@@ -93,6 +93,7 @@
         <module>s3reader</module>
         <module>s3writer</module>
         <module>hanareader</module>
+        <module>jcohanareader</module>
         <!-- common support module -->
         <module>plugin-rdbms-util</module>
         <module>plugin-unstructured-storage-util</module>
