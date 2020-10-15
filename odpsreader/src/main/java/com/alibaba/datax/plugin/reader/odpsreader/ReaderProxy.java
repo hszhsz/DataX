@@ -180,12 +180,12 @@ public class ReaderProxy {
 
     /**
      * TODO warn: odpsRecord 的 String 可能获取出来的是 binary
-     * 
+     *
      * warn: there is no dirty data in reader plugin, so do not handle dirty
      * data with TaskPluginCollector
-     * 
+     *
      * warn: odps only support BIGINT && String partition column actually
-     * 
+     *
      * @param odpsRecord
      *            every line record of odps table
      * @param dataXRecord
