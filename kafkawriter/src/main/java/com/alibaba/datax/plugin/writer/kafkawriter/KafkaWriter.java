@@ -15,10 +15,7 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 /**
  * @author dalizu on 2018/11/7.
@@ -153,22 +150,34 @@ public class KafkaWriter extends Writer {
                 return NEWLINE_FLAG;
             }
             Column column;
-            JSONObject diceLogData = new JSONObject();
-            JSONObject diceLogFields = new JSONObject();
-            JSONObject diceLogTags = new JSONObject();
+            Map<String, Object> diceLogData = new HashMap<>();
+
+            Map<String, Object> diceLogFieldsMap = new HashMap<>();
+            Map<String, Object> diceLogTags = new HashMap<>();
             StringBuilder sb = new StringBuilder();
-            Object timeStampValue=null;
-            log.info(" ******** timestampField {}",timestampField);
+            Object timeStampValue = null;
+            log.info(" ******** timestampField {}", timestampField);
             for (int i = 0; i < recordLength; i++) {
 
                 column = record.getColumn(i);
-                if(list.get(i).equals(timestampField)){
-                    timeStampValue= column.getRawData();
-                    log.info(" ******** timeStampValue {}",timeStampValue);
+                if (list.get(i).equals(timestampField)) {
+                    timeStampValue = column.getRawData();
+                    log.info(" ******** timeStampValue {}", timeStampValue);
                 }
-                log.info("*********{} {}",column.getRawData(),list.get(i));
-                diceLogFields.put(list.get(i), column.getRawData());
-                if(column.getRawData()!=null){
+                log.info("*********{} {} {}", column.getRawData(), list.get(i), column.getType().toString());
+
+                if (column.getType().toString().toUpperCase().equals("DOUBLE")) {
+                    Double a = Double.valueOf(column.getRawData().toString());
+                    diceLogFieldsMap.put(list.get(i), a);
+                } else {
+                    diceLogFieldsMap.put(list.get(i), column.getRawData());
+                }
+
+                if (this.conf.getString(Key.UNIQUE_ID) != null && !this.conf.getString(Key.UNIQUE_ID).equals("")) {
+                    diceLogTags.put("_id", column.getRawData().toString());
+                    log.info("**** UNIQUE_ID {}", this.conf.getString(Key.UNIQUE_ID));
+                }
+                if (column.getRawData() != null) {
                     diceLogTags.put(list.get(i), column.getRawData().toString());
                 }
                 sb.append(column.asString()).append(fieldDelimiter);
@@ -182,27 +191,27 @@ public class KafkaWriter extends Writer {
             diceLogTags.put("_metric_scope_id", this.conf.getString(Key.METRIC_SCOPE_ID));
             diceLogTags.put("cluster_name", this.conf.getString(Key.CLUSTER_NAME));
             diceLogTags.put("state", "running");
-            diceLogData.put("fields", diceLogFields);
+            diceLogData.put("fields", diceLogFieldsMap);
             diceLogData.put("tags", diceLogTags);
-            if(timeStampValue!=null){
+            if (timeStampValue != null) {
                 try {
-                    DateTimeFormatter dtf= DateTimeFormatter.ofPattern(timestampFormat);
+                    DateTimeFormatter dtf = DateTimeFormatter.ofPattern(timestampFormat);
                     LocalDateTime parse = LocalDateTime.parse(timeStampValue.toString(), dtf);
-                    long timeValue =Date.from(parse.atZone(ZoneId.systemDefault()).toInstant()).getTime()* 1000 * 1000;
-                    log.info("timestamp receive {} data {} timestampFormat {} value {}",timestampField,timeStampValue,timestampFormat,timeValue);
+                    long timeValue = Date.from(parse.atZone(ZoneId.systemDefault()).toInstant()).getTime() * 1000 * 1000;
+                    log.info("timestamp receive {} data {} timestampFormat {} value {}", timestampField, timeStampValue, timestampFormat, timeValue);
                     diceLogData.put("timestamp", timeValue);
                 } catch (Exception e) {
                     e.printStackTrace();
                     diceLogData.put("timestamp", System.currentTimeMillis() * 1000 * 1000);
                 }
 
-            }else{
+            } else {
                 diceLogData.put("timestamp", System.currentTimeMillis() * 1000 * 1000);
 
             }
-
-
-            return diceLogData.toJSONString();
+            JSONObject logDataResult = new JSONObject(diceLogData);
+            log.info("logDataResult *********** {}", logDataResult);
+            return logDataResult.toJSONString();
         }
 
 
@@ -230,13 +239,13 @@ public class KafkaWriter extends Writer {
         }
 
         public static void main(String[] args) {
-            try {
-                SimpleDateFormat sdf=new SimpleDateFormat("yyyyMMddHHmmss");
-                long timeValue = sdf.parse("20200917000000").getTime() * 1000 * 1000;
-                System.out.println(timeValue);
-            } catch (ParseException e) {
-                e.printStackTrace();
-            }
+
+            Double a = 123d;
+            Map<String, Object> result = new HashMap<>();
+            result.put("ada", a);
+            JSONObject logDataResult = new JSONObject(result);
+            System.out.println(logDataResult.toJSONString());
+
 
         }
 
