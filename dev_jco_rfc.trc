@@ -151,3 +151,33 @@ COUNTER     3
     return code: RFC_FAILURE (1)
     error group: 102
     key: RFC_ERROR_COMMUNICATION
+
+**** Error file opened at 20201016 010534 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Fri Oct 16 01:05:34,604<    >RfcGetException rc (7) message: ##.#####,####
+<RfcGetException
+
+
+**** Error file opened at 20201016 024821 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Fri Oct 16 02:48:21,801<    >RfcGetException rc (7) message: ##.#####,####
+<RfcGetException
+
+
+**** Error file opened at 20201016 204234 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Fri Oct 16 20:42:34,996<    >RfcGetException rc (7) message: ##.#####,####
+<RfcGetException
+
+
+**** Error file opened at 20201016 204305 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Fri Oct 16 20:43:05,672<    >RfcGetException rc (7) message: ##.#####,####
+<RfcGetException
+
+
+**** Error file opened at 20201016 204331 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Fri Oct 16 20:43:31,682<    >RfcGetException rc (7) message: ##.#####,####
+<RfcGetException
+
+
+**** Error file opened at 20201016 204422 China Standard Time Rel 3.0.11 (2014-04-15) [720.612]
+Error:  >Fri Oct 16 20:44:22,165<    >RfcGetException rc (7) message: ##.#####,####
+<RfcGetException
+

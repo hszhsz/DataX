@@ -39,6 +39,7 @@ public class HANADBUtil {
         String userName = conf.getString(KeyConstant.HANA_USERNAME);
         String password = conf.getString(KeyConstant.HANA_PASSWORD);
         String host = conf.getString(KeyConstant.HANA_HOST);
+        String port = conf.getString(KeyConstant.HANA_PORT);
 
         Properties connectProperties = new Properties();
         //服务器
@@ -46,7 +47,7 @@ public class HANADBUtil {
         //系统编号
         connectProperties.setProperty(DestinationDataProvider.JCO_SYSNR,  "00");
         //SAP集团
-        connectProperties.setProperty(DestinationDataProvider.JCO_CLIENT, "100");
+        connectProperties.setProperty(DestinationDataProvider.JCO_CLIENT, port);
         //SAP用户名
         connectProperties.setProperty(DestinationDataProvider.JCO_USER,   userName);
         //密码

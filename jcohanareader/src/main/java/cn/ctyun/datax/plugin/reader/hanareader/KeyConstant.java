@@ -26,6 +26,8 @@ public class KeyConstant {
 
     public static final String HANA_HOST = "host";
 
+    public static final String HANA_PORT = "port";
+
 
     public static final String FETCH_SIZE = "fetchSize";
 

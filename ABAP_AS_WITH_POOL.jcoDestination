@@ -1,0 +1,10 @@
+#for tests only !
+#Sat Oct 17 17:49:18 CST 2020
+jco.client.lang=zh
+jco.destination.peak_limit=10
+jco.client.client=810
+jco.client.passwd=ykrfcbd2020
+jco.client.user=ykrfc_bd
+jco.client.sysnr=00
+jco.destination.pool_capacity=0
+jco.client.ashost=192.168.33.61

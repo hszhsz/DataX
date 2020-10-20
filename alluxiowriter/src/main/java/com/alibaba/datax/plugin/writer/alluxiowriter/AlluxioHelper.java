@@ -233,14 +233,17 @@ public  class AlluxioHelper {
 //        List<Configuration>  columns = config.getListConfiguration(Key.COLUMN);
 //        String compress = config.getString(Key.COMPRESS,null);
 
+        //保证至少一条记录
         AlluxioURI outputPath = new AlluxioURI(fileName);
         BufferedOutputStream out = null;
         Record record;
         try {
-            if(!fileSystem.exists(outputPath)) {
+            if (!fileSystem.exists(outputPath)) {
                 out = new BufferedOutputStream(fileSystem.createFile(outputPath));
             }
+            int recordCnt = 0;
             while ((record = lineReceiver.getFromReader()) != null) {
+                recordCnt ++;
                 List<String> splitedRows = new ArrayList<String>();
                 int recordLength = record.getColumnNumber();
                 if (0 != recordLength) {
@@ -250,8 +253,8 @@ public  class AlluxioHelper {
                         if (null != column.getRawData()) {
                             boolean isDateColumn = column instanceof DateColumn;
                             if (!isDateColumn) {
-                                if(StringUtils.isNotEmpty(column.asString())) {
-                                    splitedRows.add(column.asString().replace("\t","    "));
+                                if (StringUtils.isNotEmpty(column.asString())) {
+                                    splitedRows.add(column.asString().replace("\t", "    "));
                                 } else {
                                     splitedRows.add(column.asString());
                                 }
@@ -270,22 +273,29 @@ public  class AlluxioHelper {
                 }
                 splitedRows.add("\n");
 
-                if(CollectionUtils.isNotEmpty(splitedRows)) {
+                if (CollectionUtils.isNotEmpty(splitedRows)) {
                     out.write((StringUtils.join(splitedRows, fieldDelimiter))
-                            .replace(",\n,","\n").replace(",\n","\n")
+                            .replace(",\n,", "\n").replace(",\n", "\n")
                             .getBytes());
                 }
 
                 splitedRows.clear();
             }
+
+            if(recordCnt <= 0) {
+                fileSystem.delete(outputPath);
+            }
         } catch (Exception e) {
             String message = String.format("写文件[%s]时发生IO异常,请检查您的网络是否正常！", fileName);
             LOG.error(message);
             AlluxioURI path = new AlluxioURI(fileName);
-//            deleteDir(path.getParent());
-            throw DataXException.asDataXException(AlluxioWriterErrorCode.Write_FILE_IO_ERROR, e);
+            try {
+                fileSystem.delete(path);
+            }catch (Exception e2) {
+                throw DataXException.asDataXException(AlluxioWriterErrorCode.Write_FILE_IO_ERROR, e);
+            }
         } finally {
-            if(out != null) {
+            if (out != null) {
                 try {
                     out.close();
                 } catch (Exception e) {
