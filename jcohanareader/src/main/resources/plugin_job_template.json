@@ -1,9 +1,11 @@
 {
     "name": "jcohanareader",
     "parameter": {
-        "username": "",
-        "password": "",
-        "host":"",
+        "jco_ashost": "",
+        "jco_sysnr": "",
+        "jco_client":"",
+        "jco_user": "",
+        "jco_passwd": "",
         "column": [],
         "connection": [
             {

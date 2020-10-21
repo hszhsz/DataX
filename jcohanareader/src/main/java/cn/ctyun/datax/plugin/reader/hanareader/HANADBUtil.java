@@ -36,22 +36,24 @@ public class HANADBUtil {
      * @return HANA客户端连接
      */
     public static void connect(Configuration conf) {
-        String userName = conf.getString(KeyConstant.HANA_USERNAME);
-        String password = conf.getString(KeyConstant.HANA_PASSWORD);
-        String host = conf.getString(KeyConstant.HANA_HOST);
-        String port = conf.getString(KeyConstant.HANA_PORT);
+        String jcoASHost = conf.getString(KeyConstant.JCO_ASHOST);
+        String jcoClient = conf.getString(KeyConstant.JCO_CLIENT);
+        String jcoUser = conf.getString(KeyConstant.JCO_USER);
+        String jcoPasswd = conf.getString(KeyConstant.JCO_PASSWD);
+        String jcoSysnr = conf.getString(KeyConstant.JCO_SYSNR);
+
 
         Properties connectProperties = new Properties();
         //服务器
-        connectProperties.setProperty(DestinationDataProvider.JCO_ASHOST, host);
+        connectProperties.setProperty(DestinationDataProvider.JCO_ASHOST, jcoASHost);
         //系统编号
-        connectProperties.setProperty(DestinationDataProvider.JCO_SYSNR,  "00");
+        connectProperties.setProperty(DestinationDataProvider.JCO_SYSNR,  jcoSysnr);
         //SAP集团
-        connectProperties.setProperty(DestinationDataProvider.JCO_CLIENT, port);
+        connectProperties.setProperty(DestinationDataProvider.JCO_CLIENT, jcoClient);
         //SAP用户名
-        connectProperties.setProperty(DestinationDataProvider.JCO_USER,   userName);
+        connectProperties.setProperty(DestinationDataProvider.JCO_USER,   jcoUser);
         //密码
-        connectProperties.setProperty(DestinationDataProvider.JCO_PASSWD, password);
+        connectProperties.setProperty(DestinationDataProvider.JCO_PASSWD, jcoPasswd);
         //登录语言
         connectProperties.setProperty(DestinationDataProvider.JCO_LANG,   "zh");
         //最大连接数
@@ -133,7 +135,7 @@ public class HANADBUtil {
         Record record = recordSender.createRecord();
         JCoMetaData metaData = jCoTable.getMetaData();
         try {
-            for(int i = 0; i < jCoTable.getNumColumns(); i++) {
+            for(int i = 0; i < jCoTable.getNumRows(); i++) {
                 switch(metaData.getType(i)) {
                     case 0:
                     case 1:

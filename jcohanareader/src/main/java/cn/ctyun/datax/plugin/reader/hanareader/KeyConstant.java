@@ -39,6 +39,12 @@ public class KeyConstant {
 
     public static final String MANDATORY_ENCODING = "mandatoryEncoding";
 
+    public static final String JCO_ASHOST = "jco_ashost";
+    public static final String JCO_SYSNR = "jco_sysnr";
+    public static final String JCO_CLIENT = "jco_client";
+    public static final String JCO_USER = "jco_user";
+    public static final String JCO_PASSWD = "jco_passwd";
+
     /**
      * HANAdb 查询条件
      */

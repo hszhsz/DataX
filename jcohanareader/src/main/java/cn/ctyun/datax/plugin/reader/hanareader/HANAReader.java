@@ -90,23 +90,26 @@ public class HANAReader extends Reader {
 
         @Override
         public void startRead(RecordSender recordSender) {
+            JCoDestination destination =null;
             try {
-                JCoDestination destination = JCoDestinationManager.getDestination(ABAP_AS_POOLED);
-                JCoFunction function = destination.getRepository().getFunction("BAPI_" + tableName);
-                if (function == null)
-                    throw new RuntimeException("BAPI_" + tableName + " not found in SAP.");
-                try {
-                    function.execute(destination);
-                } catch (AbapException e) {
-                    e.printStackTrace();
-                    return;
+                destination = JCoDestinationManager.getDestination(ABAP_AS_POOLED);
+                JCoRepository repository = destination.getRepository();
+                JCoFunction function = repository.getFunction("RFC_READ_TABLE");
+                JCoParameterList inParm =function.getImportParameterList();
+                JCoFieldIterator it = inParm.getFieldIterator();
+                while (it.hasNextField()) {
+                    System.out.println(it.nextField().getName());
                 }
-                final String mandatoryEncoding = readerSliceConfig.getString(KeyConstant.MANDATORY_ENCODING, "");
+                //设置参数
+                inParm.setValue("QUERY_TABLE", tableName);
+                inParm.setValue("DELIMITER", '\t');
+                inParm.setValue("NO_DATA", 'X');
 
-                JCoTable codes = function.getTableParameterList().getTable(tableName);
-                for (int i = 0; i < codes.getNumRows(); i++) {
-                    HANADBUtil.transportOneRecord(recordSender,codes,mandatoryEncoding,super.getTaskPluginCollector());
-                }
+                function.execute(destination);
+
+                JCoTable ret = function.getTableParameterList().getTable("DATA");
+                final String mandatoryEncoding = readerSliceConfig.getString(KeyConstant.MANDATORY_ENCODING, "");
+                HANADBUtil.transportOneRecord(recordSender,ret,mandatoryEncoding, super.getTaskPluginCollector());
             } catch (Exception e) {
                 e.printStackTrace();
             }
