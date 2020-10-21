@@ -254,15 +254,15 @@ public  class AlluxioHelper {
                             boolean isDateColumn = column instanceof DateColumn;
                             if (!isDateColumn) {
                                 if (StringUtils.isNotEmpty(column.asString())) {
-                                    splitedRows.add(column.asString().replace("\t", "    "));
+                                    splitedRows.add(column.asString().replaceAll("\r|\n", "    "));
                                 } else {
-                                    splitedRows.add(column.asString());
+                                    splitedRows.add(column.asString().replaceAll("\r|\n", "    "));
                                 }
                             } else {
                                 if (null != dateParse) {
-                                    splitedRows.add(dateParse.format(column.asDate()));
+                                    splitedRows.add(dateParse.format(column.asDate()).replaceAll("\r|\n", "    "));
                                 } else {
-                                    splitedRows.add(column.asString());
+                                    splitedRows.add(column.asString().replaceAll("\r|\n", "    "));
                                 }
                             }
                         } else {
@@ -271,11 +271,10 @@ public  class AlluxioHelper {
                         }
                     }
                 }
-                splitedRows.add("\n");
+//                splitedRows.add("\n");
 
                 if (CollectionUtils.isNotEmpty(splitedRows)) {
-                    out.write((StringUtils.join(splitedRows, fieldDelimiter))
-                            .replace(",\n,", "\n").replace(",\n", "\n")
+                    out.write(((StringUtils.join(splitedRows, fieldDelimiter)).replaceAll("\r|\n", "    ") + "\n")
                             .getBytes());
                 }
 
