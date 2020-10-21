@@ -145,6 +145,9 @@ public class KafkaWriter extends Writer {
             List<String> list = this.conf.getList(Key.COLUMN, String.class);
             String timestampField = this.conf.getString(Key.TIMESTAMP_FIELD);
             String timestampFormat = this.conf.getString(Key.TIMESTAMP_FORMAT);
+            String uniqueIds =this.conf.getString(Key.UNIQUE_ID);
+            List<String> uniqueIdList = Arrays.asList(uniqueIds.split(","));
+            StringBuilder uniqueIdResult=new StringBuilder();
             int recordLength = record.getColumnNumber();
             if (0 == recordLength) {
                 return NEWLINE_FLAG;
@@ -172,14 +175,13 @@ public class KafkaWriter extends Writer {
                 } else {
                     diceLogFieldsMap.put(list.get(i), column.getRawData());
                 }
-
-                if (this.conf.getString(Key.UNIQUE_ID) != null && !this.conf.getString(Key.UNIQUE_ID).equals("")) {
-                    diceLogTags.put("_id", column.getRawData().toString());
-                    log.info("**** UNIQUE_ID {}", this.conf.getString(Key.UNIQUE_ID));
-                }
                 if (column.getRawData() != null) {
                     diceLogTags.put(list.get(i), column.getRawData().toString());
+                    if(uniqueIdList.contains(list.get(i))){
+                        uniqueIdResult.append(column.getRawData().toString());
+                    }
                 }
+
                 sb.append(column.asString()).append(fieldDelimiter);
             }
             sb.setLength(sb.length() - 1);
@@ -193,6 +195,10 @@ public class KafkaWriter extends Writer {
             diceLogTags.put("state", "running");
             diceLogData.put("fields", diceLogFieldsMap);
             diceLogData.put("tags", diceLogTags);
+            if (this.conf.getString(Key.UNIQUE_ID) != null && !this.conf.getString(Key.UNIQUE_ID).equals("")) {
+                diceLogTags.put("_id", uniqueIdResult.toString());
+                log.info("**** unique_id {} result {}", this.conf.getString(Key.UNIQUE_ID),uniqueIdResult.toString());
+            }
             if (timeStampValue != null) {
                 try {
                     DateTimeFormatter dtf = DateTimeFormatter.ofPattern(timestampFormat);
@@ -201,13 +207,11 @@ public class KafkaWriter extends Writer {
                     log.info("timestamp receive {} data {} timestampFormat {} value {}", timestampField, timeStampValue, timestampFormat, timeValue);
                     diceLogData.put("timestamp", timeValue);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    log.info("parse error timeStampValue {} msg {}",timeStampValue,e.getMessage());
                     diceLogData.put("timestamp", System.currentTimeMillis() * 1000 * 1000);
                 }
-
             } else {
                 diceLogData.put("timestamp", System.currentTimeMillis() * 1000 * 1000);
-
             }
             JSONObject logDataResult = new JSONObject(diceLogData);
             log.info("logDataResult *********** {}", logDataResult);
