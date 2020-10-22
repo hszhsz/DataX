@@ -69,14 +69,20 @@ public class SAPConn2 {
             JCoFunction function = repository.getFunction("RFC_READ_TABLE");
             //---------------第二步,获取VBRK信息 --------------------------
             JCoParameterList inParm =function.getImportParameterList();
-            JCoFieldIterator it = inParm.getFieldIterator();
-            while (it.hasNextField()) {
-                System.out.println(it.nextField().getName());
-            }
             //设置参数
-            inParm.setValue("QUERY_TABLE", "ACDOCA");
+            inParm.setValue("QUERY_TABLE", "SKA1");
             inParm.setValue("DELIMITER", '\t');
-            inParm.setValue("NO_DATA", 'X');
+//            inParm.setValue("NO_DATA", 'X');
+//            inParm.setValue("ROWCOUNT",10);
+
+//            JCoTable fieldsTable = function.getTableParameterList().getTable("FIELDS");
+//            fieldsTable.appendRow();
+//            fieldsTable.setValue("FIELDNAME", "OIHANTYP_GI"); //Sales Document
+//            fieldsTable.appendRow();
+//            fieldsTable.setValue("FIELDNAME", "OIO_VSTEL"); // Sales Document Item
+//            fieldsTable.appendRow();
+//            fieldsTable.setValue("FIELDNAME", "OIO_SPROC"); // Material number
+
             inParm = function.getTableParameterList();
 //            JCoTable tableIn = inParm.getTable("DATA");//得到SAP函数中的表
 //            JCoTable tableInn = inParm.getTable("FIELDS");//得到SAP函数中的表列名
@@ -98,11 +104,13 @@ public class SAPConn2 {
 //                    System.out.println(jCoRecordField.getName()+":" + jCoRecordField.getTypeAsString() + ":" + jCoRecordField.getType());
 //            }
 
-            JCoTable ret = function.getTableParameterList().getTable("FIELDS");
+//            JCoTable ret = function.getTableParameterList().getTable("FIELDS");
+            JCoTable ret = function.getTableParameterList().getTable("DATA");
             System.out.println("columns:" + ret.getNumColumns() + ",rows:" + ret.getNumRows());
             for(int i = 0; i < ret.getNumRows(); i++) {
                 ret.setRow(i);
-                System.out.println(i + ":" + ret.getValue("FIELDNAME") + ":" + ret.getValue("TYPE") + ":" +  ret.getValue("FIELDTEXT") + ":" + ret.getValue("LENGTH"));
+                System.out.println(i + ":" + ret.getValue(0));
+//                System.out.println(i + ":" + ret.getValue("FIELDNAME") + ":" + ret.getValue("TYPE") + ":" +  ret.getValue("FIELDTEXT") + ":" + ret.getValue("LENGTH"));
             }
 //            for (int i = 0; i < ret.getNumRows(); i++) {
 //                ret.setRow(i);//指定行

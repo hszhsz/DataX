@@ -41,7 +41,8 @@ public class HANADBUtil {
         String jcoUser = conf.getString(KeyConstant.JCO_USER);
         String jcoPasswd = conf.getString(KeyConstant.JCO_PASSWD);
         String jcoSysnr = conf.getString(KeyConstant.JCO_SYSNR);
-
+        LOG.info("JCO_ASHOST:{},JCO_CLIENT:{},JCO_USER:{},JCO_PASSWD:{},JCO_SYSNR:{}",
+                jcoASHost,jcoClient,jcoUser,jcoPasswd,jcoSysnr);
 
         Properties connectProperties = new Properties();
         //服务器
@@ -126,50 +127,57 @@ public class HANADBUtil {
 
 
     public static Record transportOneRecord(RecordSender recordSender, JCoTable jCoTable, String mandatoryEncoding, TaskPluginCollector taskPluginCollector) {
-        Record record = buildRecord(recordSender, jCoTable, mandatoryEncoding, taskPluginCollector);
-        recordSender.sendToWriter(record);
-        return record;
+        LOG.info("rows:{},columns:{}",jCoTable.getNumRows(),jCoTable.getNumColumns());
+        for(int i = 0; i < jCoTable.getNumRows(); i++) {
+            jCoTable.setRow(i);
+            Record record = buildRecord(recordSender, jCoTable, mandatoryEncoding, taskPluginCollector);
+            recordSender.sendToWriter(record);
+        }
+        return null;
     }
 
     private static Record buildRecord(RecordSender recordSender, JCoTable jCoTable, String mandatoryEncoding, TaskPluginCollector taskPluginCollector) {
         Record record = recordSender.createRecord();
         JCoMetaData metaData = jCoTable.getMetaData();
         try {
-            for(int i = 0; i < jCoTable.getNumRows(); i++) {
-                switch(metaData.getType(i)) {
-                    case 0:
-                    case 1:
-                    case 2:
-                    case 3:
-                    case 4:
-                    case 6:
-                        record.addColumn(new StringColumn(jCoTable.getString(i)));
-                        break;
-                    case 7:
-                        record.addColumn(new LongColumn(jCoTable.getLong(i)));
-                        break;
-                    case 8:
-                    case 9:
-                    case 10:
-                        record.addColumn(new LongColumn(jCoTable.getLong(i)));
-                        break;
-                    case 17:
-                    case 99:
-                        record.addColumn(new StringColumn(jCoTable.getString(i)));
-                        break;
-                    case 23:
-                    case 24:
-                        record.addColumn(new DoubleColumn(jCoTable.getDouble(i)));
-                        break;
-                    case 29:
-                        record.addColumn(new StringColumn(jCoTable.getString(i)));
-                        break;
-                    case 30:
-                        record.addColumn(new StringColumn(jCoTable.getString(i)));
-                        break;
-                    default:
-                        record.addColumn(new StringColumn(jCoTable.getString(i)));
-                        break;                }
+            String[] values = jCoTable.getValue(0).toString().split("\t");
+
+            for(int i = 0; i < values.length; i++) {
+                record.addColumn(new StringColumn(values[i]));
+//                switch(metaData.getType(i)) {
+//                    case 0:
+//                    case 1:
+//                    case 2:
+//                    case 3:
+//                    case 4:
+//                    case 6:
+//                        record.addColumn(new StringColumn(values[i]));
+//                        break;
+//                    case 7:
+//                        record.addColumn(new LongColumn(values[i]));
+//                        break;
+//                    case 8:
+//                    case 9:
+//                    case 10:
+//                        record.addColumn(new LongColumn(values[i]));
+//                        break;
+//                    case 17:
+//                    case 99:
+//                        record.addColumn(new StringColumn(values[i]));
+//                        break;
+//                    case 23:
+//                    case 24:
+//                        record.addColumn(new DoubleColumn(values[i]));
+//                        break;
+//                    case 29:
+//                        record.addColumn(new StringColumn(values[i]));
+//                        break;
+//                    case 30:
+//                        record.addColumn(new StringColumn(values[i]));
+//                        break;
+//                    default:
+//                        record.addColumn(new StringColumn(values[i]));
+//                        break;                }
             }
         } catch (Exception var11) {
             taskPluginCollector.collectDirtyRecord(record, var11);
@@ -178,52 +186,5 @@ public class HANADBUtil {
             }
         }
         return record;
-    }
-
-    public static void workWithTable(String tableName) throws JCoException {
-        JCoDestination destination = JCoDestinationManager.getDestination(ABAP_AS_POOLED);
-        JCoFunction function = destination.getRepository().getFunction("BAPI_COMPANYCODE_GETLIST");//从对象仓库中获取 RFM 函数：获取公司列表
-        if (function == null)
-            throw new RuntimeException("BAPI_COMPANYCODE_GETLIST not found in SAP.");
-        try {
-            function.execute(destination);
-        } catch (AbapException e) {
-            e.printStackTrace();
-            return ;
-        }
-
-        //获取Table参数：COMPANYCODE_LIST
-        JCoTable codes = function.getTableParameterList().getTable(tableName);
-        for (int i = 0; i < codes.getNumRows(); i++) {//遍历Table
-            codes.setRow(i);//将行指针指向特定的索引行
-            System.out.println(codes.getString("COMP_CODE") + '\t'
-                    + codes.getString("COMP_NAME"));
-        }
-
-        // move the table cursor to first row
-        codes.firstRow();//从首行开始重新遍历 codes.nextRow()：如果有下一行，下移一行并返回True
-        for (int i = 0; i < codes.getNumRows(); i++, codes.nextRow()) {
-            //进一步获取公司详细信息
-            function = destination.getRepository().getFunction("BAPI_COMPANYCODE_GETDETAIL");
-            if (function == null)
-                throw new RuntimeException("BAPI_COMPANYCODE_GETDETAIL not found in SAP.");
-
-            function.getImportParameterList().setValue("COMPANYCODEID", codes.getString("COMP_CODE"));
-
-            function.getExportParameterList().setActive("COMPANYCODE_ADDRESS", false);
-
-            try {
-                function.execute(destination);
-            } catch (AbapException e) {
-                System.out.println(e.toString());
-                return ;
-            }
-
-            JCoStructure detail = function.getExportParameterList().getStructure("COMPANYCODE_DETAIL");
-
-            System.out.println(detail.getString("COMP_CODE") + '\t'
-                    + detail.getString("COUNTRY") + '\t'
-                    + detail.getString("CITY"));
-        }// for
     }
 }

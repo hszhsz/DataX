@@ -1,20 +1,12 @@
 package cn.ctyun.datax.plugin.reader.hanareader;
 
-import com.alibaba.datax.common.element.*;
-import com.alibaba.datax.common.exception.DataXException;
 import com.alibaba.datax.common.plugin.RecordSender;
-import com.alibaba.datax.common.plugin.TaskPluginCollector;
 import com.alibaba.datax.common.spi.Reader;
-import com.alibaba.datax.common.statistics.PerfRecord;
 import com.alibaba.datax.common.util.Configuration;
 import com.sap.conn.jco.*;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,7 +21,6 @@ public class HANAReader extends Reader {
 
         private static final Logger LOG = LoggerFactory.getLogger(Job.class);
         private Configuration originalConfig = null;
-        private String tableName;
 
         @Override
         public void init() {
@@ -39,16 +30,10 @@ public class HANAReader extends Reader {
             }
             int fetchSize = 2000;
             this.originalConfig.set(KeyConstant.FETCH_SIZE, fetchSize);
-
-            List<Object> connList = originalConfig.getList(KeyConstant.CONN_MARK, Object.class);
-            Configuration connConf = Configuration.from(connList.get(0).toString());
-
-            tableName = connConf.getString(KeyConstant.TABLE);
         }
 
         @Override
         public void preCheck(){
-            HANADBUtil.connect(originalConfig);
         }
 
         /**
@@ -79,37 +64,42 @@ public class HANAReader extends Reader {
         private int taskId = super.getTaskId();
         private String basicMsg;
         private String tableName;
+        private JCoDestination destination;
+        private JCoFunction function;
+
         @Override
         public void init() {
             this.readerSliceConfig = super.getPluginJobConf();
             this.basicMsg = String.format("%s:[%s]", KeyConstant.JDBC_URL,
                     readerSliceConfig.getString(KeyConstant.JDBC_URL));
 
-            tableName = readerSliceConfig.getString(KeyConstant.TABLE);
+            List<Object> connList = this.readerSliceConfig.getList(KeyConstant.CONN_MARK, Object.class);
+            Configuration connConf = Configuration.from(connList.get(0).toString());
+            tableName = connConf.getList("table",Object.class).get(0).toString();
+            HANADBUtil.connect(this.readerSliceConfig);
+            try {
+                destination = JCoDestinationManager.getDestination(ABAP_AS_POOLED);
+                JCoRepository repository = this.destination.getRepository();
+                function = repository.getFunction("RFC_READ_TABLE");
+                JCoParameterList inParm = function.getImportParameterList();
+
+                //设置参数
+                inParm.setValue("QUERY_TABLE", tableName);
+                inParm.setValue("DELIMITER", '\t');
+//                inParm.setValue("NO_DATA", 'X');
+//                inParm.setValue("ROWCOUNT",10);
+            } catch (Exception e) {
+                LOG.error(e.getMessage());
+            }
         }
 
         @Override
         public void startRead(RecordSender recordSender) {
-            JCoDestination destination =null;
             try {
-                destination = JCoDestinationManager.getDestination(ABAP_AS_POOLED);
-                JCoRepository repository = destination.getRepository();
-                JCoFunction function = repository.getFunction("RFC_READ_TABLE");
-                JCoParameterList inParm =function.getImportParameterList();
-                JCoFieldIterator it = inParm.getFieldIterator();
-                while (it.hasNextField()) {
-                    System.out.println(it.nextField().getName());
-                }
-                //设置参数
-                inParm.setValue("QUERY_TABLE", tableName);
-                inParm.setValue("DELIMITER", '\t');
-                inParm.setValue("NO_DATA", 'X');
-
                 function.execute(destination);
-
                 JCoTable ret = function.getTableParameterList().getTable("DATA");
                 final String mandatoryEncoding = readerSliceConfig.getString(KeyConstant.MANDATORY_ENCODING, "");
-                HANADBUtil.transportOneRecord(recordSender,ret,mandatoryEncoding, super.getTaskPluginCollector());
+                HANADBUtil.transportOneRecord(recordSender, ret, mandatoryEncoding, super.getTaskPluginCollector());
             } catch (Exception e) {
                 e.printStackTrace();
             }
