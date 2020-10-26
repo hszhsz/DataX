@@ -142,80 +142,100 @@ public class KafkaWriter extends Writer {
 
 
         private String recordToString(Record record) {
-            List<String> list = this.conf.getList(Key.COLUMN, String.class);
-            String timestampField = this.conf.getString(Key.TIMESTAMP_FIELD);
-            String timestampFormat = this.conf.getString(Key.TIMESTAMP_FORMAT);
-            String uniqueIds =this.conf.getString(Key.UNIQUE_ID);
-            List<String> uniqueIdList = Arrays.asList(uniqueIds.split(","));
-            StringBuilder uniqueIdResult=new StringBuilder();
-            int recordLength = record.getColumnNumber();
-            if (0 == recordLength) {
-                return NEWLINE_FLAG;
-            }
             Column column;
-            Map<String, Object> diceLogData = new HashMap<>();
-
-            Map<String, Object> diceLogFieldsMap = new HashMap<>();
-            Map<String, Object> diceLogTags = new HashMap<>();
-            StringBuilder sb = new StringBuilder();
-            Object timeStampValue = null;
-            log.info(" ******** timestampField {}", timestampField);
-            for (int i = 0; i < recordLength; i++) {
-
-                column = record.getColumn(i);
-                if (list.get(i).equals(timestampField)) {
-                    timeStampValue = column.getRawData();
-                    log.info(" ******** timeStampValue {}", timeStampValue);
-                }
-                log.info("*********{} {} {}", column.getRawData(), list.get(i), column.getType().toString());
-
-                if (column.getType().toString().toUpperCase().equals("DOUBLE")) {
-                    Double a = Double.valueOf(column.getRawData().toString());
-                    diceLogFieldsMap.put(list.get(i), a);
-                } else {
-                    diceLogFieldsMap.put(list.get(i), column.getRawData());
-                }
-                if (column.getRawData() != null) {
-                    diceLogTags.put(list.get(i), column.getRawData().toString());
-                    if(uniqueIdList.contains(list.get(i))){
-                        uniqueIdResult.append(column.getRawData().toString());
+            int recordLength = record.getColumnNumber();
+            List<String> list = this.conf.getList(Key.COLUMN, String.class);
+            if(!this.conf.getString(Key.METRIC_SCOPE).equals("bigdata")){
+                //正常情况
+                Map<String, Object> kafkaMap= new HashMap<>();
+                for (int i = 0; i < recordLength; i++) {
+                    column = record.getColumn(i);
+                    log.info("*********{} {} {}", column.getRawData(), list.get(i), column.getType().toString());
+                    if (column.getType().toString().toUpperCase().equals("DOUBLE")) {
+                        Double a = Double.valueOf(column.getRawData().toString());
+                        kafkaMap.put(list.get(i), a);
+                    } else {
+                        kafkaMap.put(list.get(i), column.getRawData());
                     }
                 }
+                JSONObject kafkaResult = new JSONObject(kafkaMap);
+                log.info("logDataResult *********** {}", kafkaResult);
+                return kafkaResult.toJSONString();
+            }else{
+                //大盘需要的特殊结构
+                String timestampField = this.conf.getString(Key.TIMESTAMP_FIELD);
+                String timestampFormat = this.conf.getString(Key.TIMESTAMP_FORMAT);
+                String uniqueIds =this.conf.getString(Key.UNIQUE_ID);
+                List<String> uniqueIdList = Arrays.asList(uniqueIds.split(","));
+                StringBuilder uniqueIdResult=new StringBuilder();
+                if (0 == recordLength) {
+                    return NEWLINE_FLAG;
+                }
+                Map<String, Object> diceLogData = new HashMap<>();
 
-                sb.append(column.asString()).append(fieldDelimiter);
-            }
-            sb.setLength(sb.length() - 1);
-            sb.append(NEWLINE_FLAG);
-            diceLogData.put("name", this.conf.getString(Key.INDEX_TABLE_NAME));
+                Map<String, Object> diceLogFieldsMap = new HashMap<>();
+                Map<String, Object> diceLogTags = new HashMap<>();
+                StringBuilder sb = new StringBuilder();
+                Object timeStampValue = null;
+                log.info(" ******** timestampField {}", timestampField);
+                for (int i = 0; i < recordLength; i++) {
 
-            diceLogTags.put("_meta", this.conf.getString(Key.META));
-            diceLogTags.put("_metric_scope", this.conf.getString(Key.METRIC_SCOPE));
-            diceLogTags.put("_metric_scope_id", this.conf.getString(Key.METRIC_SCOPE_ID));
-            diceLogTags.put("cluster_name", this.conf.getString(Key.CLUSTER_NAME));
-            diceLogTags.put("state", "running");
-            diceLogData.put("fields", diceLogFieldsMap);
-            diceLogData.put("tags", diceLogTags);
-            if (this.conf.getString(Key.UNIQUE_ID) != null && !this.conf.getString(Key.UNIQUE_ID).equals("")) {
-                diceLogTags.put("_id", uniqueIdResult.toString());
-                log.info("**** unique_id {} result {}", this.conf.getString(Key.UNIQUE_ID),uniqueIdResult.toString());
-            }
-            if (timeStampValue != null) {
-                try {
-                    DateTimeFormatter dtf = DateTimeFormatter.ofPattern(timestampFormat);
-                    LocalDateTime parse = LocalDateTime.parse(timeStampValue.toString(), dtf);
-                    long timeValue = Date.from(parse.atZone(ZoneId.systemDefault()).toInstant()).getTime() * 1000 * 1000;
-                    log.info("timestamp receive {} data {} timestampFormat {} value {}", timestampField, timeStampValue, timestampFormat, timeValue);
-                    diceLogData.put("timestamp", timeValue);
-                } catch (Exception e) {
-                    log.info("parse error timeStampValue {} msg {}",timeStampValue,e.getMessage());
+                    column = record.getColumn(i);
+                    if (list.get(i).equals(timestampField)) {
+                        timeStampValue = column.getRawData();
+                        log.info(" ******** timeStampValue {}", timeStampValue);
+                    }
+                    log.info("*********{} {} {}", column.getRawData(), list.get(i), column.getType().toString());
+
+                    if (column.getType().toString().toUpperCase().equals("DOUBLE")) {
+                        Double a = Double.valueOf(column.getRawData().toString());
+                        diceLogFieldsMap.put(list.get(i), a);
+                    } else {
+                        diceLogFieldsMap.put(list.get(i), column.getRawData());
+                    }
+                    if (column.getRawData() != null) {
+                        diceLogTags.put(list.get(i), column.getRawData().toString());
+                        if(uniqueIdList.contains(list.get(i))){
+                            uniqueIdResult.append(column.getRawData().toString());
+                        }
+                    }
+
+                    sb.append(column.asString()).append(fieldDelimiter);
+                }
+                sb.setLength(sb.length() - 1);
+                sb.append(NEWLINE_FLAG);
+                diceLogData.put("name", this.conf.getString(Key.INDEX_TABLE_NAME));
+
+                diceLogTags.put("_meta", this.conf.getString(Key.META));
+                diceLogTags.put("_metric_scope", this.conf.getString(Key.METRIC_SCOPE));
+                diceLogTags.put("_metric_scope_id", this.conf.getString(Key.METRIC_SCOPE_ID));
+                diceLogTags.put("cluster_name", this.conf.getString(Key.CLUSTER_NAME));
+                diceLogTags.put("state", "running");
+                diceLogData.put("fields", diceLogFieldsMap);
+                diceLogData.put("tags", diceLogTags);
+                if (this.conf.getString(Key.UNIQUE_ID) != null && !this.conf.getString(Key.UNIQUE_ID).equals("")) {
+                    diceLogTags.put("_id", uniqueIdResult.toString());
+                    log.info("**** unique_id {} result {}", this.conf.getString(Key.UNIQUE_ID),uniqueIdResult.toString());
+                }
+                if (timeStampValue != null) {
+                    try {
+                        DateTimeFormatter dtf = DateTimeFormatter.ofPattern(timestampFormat);
+                        LocalDateTime parse = LocalDateTime.parse(timeStampValue.toString(), dtf);
+                        long timeValue = Date.from(parse.atZone(ZoneId.systemDefault()).toInstant()).getTime() * 1000 * 1000;
+                        log.info("timestamp receive {} data {} timestampFormat {} value {}", timestampField, timeStampValue, timestampFormat, timeValue);
+                        diceLogData.put("timestamp", timeValue);
+                    } catch (Exception e) {
+                        log.info("parse error timeStampValue {} msg {}",timeStampValue,e.getMessage());
+                        diceLogData.put("timestamp", System.currentTimeMillis() * 1000 * 1000);
+                    }
+                } else {
                     diceLogData.put("timestamp", System.currentTimeMillis() * 1000 * 1000);
                 }
-            } else {
-                diceLogData.put("timestamp", System.currentTimeMillis() * 1000 * 1000);
+                JSONObject logDataResult = new JSONObject(diceLogData);
+                log.info("logDataResult *********** {}", logDataResult);
+                return logDataResult.toJSONString();
             }
-            JSONObject logDataResult = new JSONObject(diceLogData);
-            log.info("logDataResult *********** {}", logDataResult);
-            return logDataResult.toJSONString();
+
         }
 
 
