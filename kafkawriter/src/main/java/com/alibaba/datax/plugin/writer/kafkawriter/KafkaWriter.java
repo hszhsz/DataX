@@ -177,20 +177,25 @@ public class KafkaWriter extends Writer {
                 Map<String, Object> diceLogTags = new HashMap<>();
                 StringBuilder sb = new StringBuilder();
                 Object timeStampValue = null;
-                log.info(" ******** timestampField {}", timestampField);
+               // log.info(" ******** timestampField {}", timestampField);
                 for (int i = 0; i < recordLength; i++) {
 
                     column = record.getColumn(i);
-                    if (list.get(i).equals(timestampField)) {
-                        timeStampValue = column.getRawData();
-                        log.info(" ******** timeStampValue {}", timeStampValue);
-                    }
-                    log.info("*********{} {} {}", column.getRawData(), list.get(i), column.getType().toString());
+//                    if (list.get(i).equals(timestampField)) {
+//                        timeStampValue = column.getRawData();
+//                        log.info(" ******** timeStampValue {}", timeStampValue);
+//                    }
+//                    log.info("*********{} {} {}", column.getRawData(), list.get(i), column.getType().toString());
 
                     if (column.getType().toString().toUpperCase().equals("DOUBLE")) {
                         Double a = Double.valueOf(column.getRawData().toString());
                         diceLogFieldsMap.put(list.get(i), a);
-                    } else {
+                    }
+                    else if (column.getType().toString().toUpperCase().equals("DATE") || column.getType().toString().toUpperCase().equals("DATETIME")) {
+                        Date rawData =(Date) column.getRawData();
+                        diceLogFieldsMap.put(list.get(i), rawData.getTime());
+                    }
+                    else {
                         diceLogFieldsMap.put(list.get(i), column.getRawData());
                     }
                     if (column.getRawData() != null) {
@@ -217,20 +222,20 @@ public class KafkaWriter extends Writer {
                     diceLogTags.put("_id", uniqueIdResult.toString());
                     log.info("**** unique_id {} result {}", this.conf.getString(Key.UNIQUE_ID),uniqueIdResult.toString());
                 }
-                if (timeStampValue != null) {
-                    try {
-                        DateTimeFormatter dtf = DateTimeFormatter.ofPattern(timestampFormat);
-                        LocalDateTime parse = LocalDateTime.parse(timeStampValue.toString(), dtf);
-                        long timeValue = Date.from(parse.atZone(ZoneId.systemDefault()).toInstant()).getTime() * 1000 * 1000;
-                        log.info("timestamp receive {} data {} timestampFormat {} value {}", timestampField, timeStampValue, timestampFormat, timeValue);
-                        diceLogData.put("timestamp", timeValue);
-                    } catch (Exception e) {
-                        log.info("parse error timeStampValue {} msg {}",timeStampValue,e.getMessage());
-                        diceLogData.put("timestamp", System.currentTimeMillis() * 1000 * 1000);
-                    }
-                } else {
+//                if (timeStampValue != null) {
+//                    try {
+//                        DateTimeFormatter dtf = DateTimeFormatter.ofPattern(timestampFormat);
+//                        LocalDateTime parse = LocalDateTime.parse(timeStampValue.toString(), dtf);
+//                        long timeValue = Date.from(parse.atZone(ZoneId.systemDefault()).toInstant()).getTime() * 1000 * 1000;
+//                        log.info("timestamp receive {} data {} timestampFormat {} value {}", timestampField, timeStampValue, timestampFormat, timeValue);
+//                        diceLogData.put("timestamp", timeValue);
+//                    } catch (Exception e) {
+//                        log.info("parse error timeStampValue {} msg {}",timeStampValue,e.getMessage());
+//                        diceLogData.put("timestamp", System.currentTimeMillis() * 1000 * 1000);
+//                    }
+//                } else {
                     diceLogData.put("timestamp", System.currentTimeMillis() * 1000 * 1000);
-                }
+//                }
                 JSONObject logDataResult = new JSONObject(diceLogData);
                 log.info("logDataResult *********** {}", logDataResult);
                 return logDataResult.toJSONString();
