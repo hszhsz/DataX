@@ -22,5 +22,6 @@ public class Key {
     public static final String COLUMN = "column";
     public static final String TIMESTAMP_FIELD = "timestamp";
     public static final String TIMESTAMP_FORMAT = "timestampFormat";
+    public static final String UNIQUE_ID = "unique_id";
 
 }
