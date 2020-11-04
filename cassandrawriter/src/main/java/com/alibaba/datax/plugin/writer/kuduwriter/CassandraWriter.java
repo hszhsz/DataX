@@ -39,8 +39,6 @@ public class CassandraWriter extends Writer {
             if (truncate) {
                 CassandraHelper.truncateTable(this.originConfig);
             }
-
-
         }
 
         @Override

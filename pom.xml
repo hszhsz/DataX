@@ -55,7 +55,7 @@
         <module>otsreader</module>
         <module>otsstreamreader</module>
         <module>txtfilereader</module>
-        <module>hdfsreader</module>
+<!--        <module>hdfsreader</module>-->
         <module>streamreader</module>
         <module>ossreader</module>
         <module>ftpreader</module>
@@ -66,13 +66,12 @@
         <module>cassandrareader</module>
 
         <!-- writer -->
-        <module>alluxiowriter</module>
         <module>mysqlwriter</module>
         <module>drdswriter</module>
         <module>odpswriter</module>
         <module>txtfilewriter</module>
         <module>ftpwriter</module>
-        <module>hdfswriter</module>
+<!--        <module>hdfswriter</module>-->
         <module>streamwriter</module>
         <module>otswriter</module>
         <module>oraclewriter</module>
@@ -88,12 +87,9 @@
         <module>hbase11xsqlwriter</module>
         <module>elasticsearchwriter</module>
         <module>cassandrawriter</module>
-        <module>kuduwriter</module>
         <module>db2writer</module>
-        <module>s3reader</module>
-        <module>s3writer</module>
-        <module>hanareader</module>
-        <module>jcohanareader</module>
+        <module>rabbitmqwriter</module>
+        <module>kafkawriter</module>
         <!-- common support module -->
         <module>plugin-rdbms-util</module>
         <module>plugin-unstructured-storage-util</module>

@@ -358,11 +358,14 @@ public class OdpsReader extends Reader {
                 List<Pair<String, ColumnType>> parsedColumns = new ArrayList<Pair<String, ColumnType>>();
                 for (int i = 0; i < parsedColumnsTmp.size(); i++) {
                     Configuration eachColumnConfig = parsedColumnsTmp.get(i);
-                    String columnName = eachColumnConfig.getString("left");
-                    ColumnType columnType = ColumnType
-                            .asColumnType(eachColumnConfig.getString("right"));
-                    parsedColumns.add(new MutablePair<String, ColumnType>(
-                            columnName, columnType));
+                    Set<String> keys = eachColumnConfig.getKeys();
+                    for(String key:keys){
+                        ColumnType columnType = ColumnType
+                                .asColumnType(eachColumnConfig.getString(key).toLowerCase());
+                        parsedColumns.add(new MutablePair<String, ColumnType>(
+                                key, columnType));
+                    }
+
 
                 }
                 ReaderProxy readerProxy = new ReaderProxy(recordSender, downloadSession,

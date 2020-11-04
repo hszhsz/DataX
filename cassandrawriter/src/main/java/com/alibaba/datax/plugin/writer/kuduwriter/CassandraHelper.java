@@ -1,4 +1,4 @@
-package com.alibaba.datax.plugin.writer.kuduwriter;
+package com.alibaba.datax.plugin.writer.cassandrawriter;
 
 import com.alibaba.datax.common.element.Column;
 import com.alibaba.datax.common.element.Record;
@@ -8,6 +8,8 @@ import com.alibaba.datax.common.util.Configuration;
 import com.alibaba.fastjson.JSON;
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.InvalidQueryException;
+import com.datastax.driver.core.querybuilder.Insert;
+import com.datastax.driver.core.querybuilder.QueryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +20,8 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.datastax.driver.core.querybuilder.QueryBuilder.timestamp;
+
 public class CassandraHelper {
     private static final Logger LOG = LoggerFactory.getLogger(CassandraHelper.class);
     private static List<ColumnMetadata> columnListFromTable = null;
@@ -27,6 +31,11 @@ public class CassandraHelper {
     private static List<Object> column = null;
     public static boolean needCreateTable = false;
 
+    private static List<String> columnMeta = null;
+    private static List<DataType> columnTypes;
+    private static int writeTimeCol = -1;
+
+    private static TableMetadata tableMetadata;
     private static Map<String, DataType> columnTypeMap = null;
     private static List<Object> primaryKey = null;
     private static String insertSql = "";
@@ -176,19 +185,62 @@ public class CassandraHelper {
         primaryKey = config.getList(Constants.PRIMARY_KEY);
 
         connect();
-        initTableMeta();
+        initKeyspaceMeta();
     }
 
-    public static void initTableMeta() {
+//    public static void initTableMeta() {
+//        column = config.getList(Constants.COLUMN);
+//        columnListFromTable = buildColumnList();
+//        columnTypeMap = buildColumnMap();
+//        insertSql = buildSql();
+//        statement = session.prepare(insertSql);
+//        LOG.info("columnListFromTable {}", columnListFromTable);
+//        LOG.info("columnTypeMap {}", columnTypeMap);
+//        LOG.info("insertSql {}", insertSql);
+//    }
+
+    public static void initKeyspaceMeta() {
         column = config.getList(Constants.COLUMN);
         columnListFromTable = buildColumnList();
         columnTypeMap = buildColumnMap();
-        insertSql = buildSql();
-        statement = session.prepare(insertSql);
+//        insertSql = buildSql();
+//        statement = session.prepare(insertSql);
         LOG.info("columnListFromTable {}", columnListFromTable);
         LOG.info("columnTypeMap {}", columnTypeMap);
         LOG.info("insertSql {}", insertSql);
+        KeyspaceMetadata key = cluster.getMetadata().getKeyspace((String) keyspace.get(Constants.KEYSPACE_NAME));
+        tableMetadata = key.getTable(table);
+        columnMeta = config.getList(Constants.COLUMN,String.class);
+        columnTypes = new ArrayList<>(columnMeta.size());
 
+        Insert insertStmt = QueryBuilder.insertInto(table);
+        for( String colunmnName : columnMeta ) {
+            if( colunmnName.toLowerCase().equals(Constants.WRITE_TIME) ) {
+                if( writeTimeCol != -1 ) {
+                    throw DataXException
+                            .asDataXException(
+                                    CassandraWriterErrorCode.CONF_ERROR,
+                                    "列配置信息有错误. 只能有一个时间戳列(writetime())");
+                }
+                writeTimeCol = columnTypes.size();
+                continue;
+            }
+            insertStmt.value(colunmnName,QueryBuilder.bindMarker());
+            ColumnMetadata col = tableMetadata.getColumn(colunmnName);
+            if( col == null ) {
+                throw DataXException
+                        .asDataXException(
+                                CassandraWriterErrorCode.CONF_ERROR,
+                                String.format(
+                                        "列配置信息有错误. 表中未找到列名 '%s' .",
+                                        colunmnName));
+            }
+            columnTypes.add(col.getType());
+        }
+        if(writeTimeCol != -1) {
+            insertStmt.using(timestamp(QueryBuilder.bindMarker()));
+        }
+        statement = session.prepare(insertStmt);
     }
 
     public static void connect() {
@@ -213,7 +265,7 @@ public class CassandraHelper {
                 .withPoolingOptions(poolingOptions).build();
 
         // 建立连接
-        session = cluster.connect();
+        session = cluster.connect((String) keyspace.get(Constants.KEYSPACE_NAME));
 
     }
 
@@ -250,61 +302,123 @@ public class CassandraHelper {
     /**
      * 插入
      */
+//    public static void insert(Record record) {
+//        StringBuilder sb = new StringBuilder();
+//
+//        BoundStatement boundStmt = statement.bind();
+//
+//        sb.append("INSERT INTO ")
+//                .append((String) keyspace.get(Constants.KEYSPACE_NAME))
+//                .append(".")
+//                .append(table)
+//                .append(" (");
+//
+//        for (int i = 0; i < column.size(); i++) {
+//            sb.append(column.get(i));
+//            if (i != (column.size() - 1)) {
+//                sb.append(",");
+//            }
+//        }
+//
+//        sb.append(") VALUES ( ");
+//
+//        for (int j = 0; j < record.getColumnNumber(); j++) {
+//            Column column = record.getColumn(j);
+//            switch (column.getType()) {
+//                case INT:
+//                    sb.append(column.asBigInteger());
+//                    break;
+//                case BOOL:
+//                    sb.append(column.asBoolean());
+//                    break;
+//                case DATE:
+//                    sb.append(column.asDate());
+//                    break;
+//                case LONG:
+//                    sb.append(column.asLong());
+//                    break;
+//                case BYTES:
+//                    sb.append("'").append(column.asBytes().toString()).append("'");
+//                    break;
+//                case DOUBLE:
+//                    sb.append(column.asDouble());
+//                    break;
+//                case STRING:
+//                    sb.append("'").append(column.asString()).append("'");
+//                    break;
+//                case NULL:
+//                case BAD:
+//                    break;
+//                default:
+//            }
+//            if (j != (record.getColumnNumber() - 1)) {
+//                sb.append(",");
+//            }
+//        }
+//
+//        sb.append(" )");
+//
+//        session.execute(sb.toString());
+//    }
+
     public static void insert(Record record) {
-        StringBuilder sb = new StringBuilder();
 
-        sb.append("INSERT INTO ")
-                .append((String) keyspace.get(Constants.KEYSPACE_NAME))
-                .append(".")
-                .append(table)
-                .append(" (");
-
-        for (int i = 0; i < column.size(); i++) {
-            sb.append(column.get(i));
-            if (i != (column.size() - 1)) {
-                sb.append(",");
-            }
-        }
-
-        sb.append(") VALUES ( ");
-
+        BoundStatement boundStmt = statement.bind();
         for (int j = 0; j < record.getColumnNumber(); j++) {
             Column column = record.getColumn(j);
-            switch (column.getType()) {
-                case INT:
-                    sb.append(column.asBigInteger());
-                    break;
-                case BOOL:
-                    sb.append(column.asBoolean());
-                    break;
-                case DATE:
-                    sb.append(column.asDate());
-                    break;
-                case LONG:
-                    sb.append(column.asLong());
-                    break;
-                case BYTES:
-                    sb.append("'").append(column.asBytes().toString()).append("'");
-                    break;
-                case DOUBLE:
-                    sb.append(column.asDouble());
-                    break;
-                case STRING:
-                    sb.append("'").append(column.asString()).append("'");
-                    break;
-                case NULL:
-                case BAD:
-                    break;
-                default:
+            if (column.getRawData() != null) {
+                DataType type = columnTypes.get(j);
+                switch (type.getName()) {
+                    case ASCII:
+                    case TEXT:
+                    case VARCHAR:
+                        boundStmt.setString(j, column.asString());
+                        break;
+                    case INT:
+                        boundStmt.setInt(j, column.asLong().intValue());
+                        break;
+                    case BOOLEAN:
+                        boundStmt.setBool(j, column.asBoolean());
+                        break;
+                    case DATE:
+                        boundStmt.setDate(j, LocalDate.fromMillisSinceEpoch(column.asDate().getTime()));
+                        break;
+                    case TINYINT:
+                        boundStmt.setByte(j, column.asLong().byteValue());
+                        break;
+                    case BLOB:
+                        boundStmt.setBytes(j, ByteBuffer.wrap(column.asBytes()));
+                        break;
+                    case DOUBLE:
+                        boundStmt.setDouble(j, column.asDouble());
+                        break;
+                    case SMALLINT:
+                        boundStmt.setShort(j, column.asLong().shortValue());
+                        break;
+                    case BIGINT:
+                        boundStmt.setLong(j, column.asLong());
+                        break;
+                    case FLOAT:
+                        boundStmt.setFloat(j, column.asDouble().floatValue());
+                        break;
+                    case DECIMAL:
+                        boundStmt.setDecimal(j, column.asBigDecimal());
+                        break;
+                    case TIME:
+                        boundStmt.setTime(j, column.asLong());
+                        break;
+                    case TIMESTAMP:
+                        boundStmt.setTimestamp(j, column.asDate());
+                        break;
+
+                    default:
+                }
+            }else {
+                boundStmt.setToNull(j);
             }
-            if (j != (record.getColumnNumber() - 1)) {
-                sb.append(",");
-            }
+
         }
-
-        sb.append(" )");
-
-        session.execute(sb.toString());
+        session.execute(boundStmt);
     }
 
     public static void close() {

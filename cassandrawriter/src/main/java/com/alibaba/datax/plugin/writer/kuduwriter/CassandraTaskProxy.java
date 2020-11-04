@@ -6,6 +6,7 @@ import com.alibaba.datax.common.exception.DataXException;
 import com.alibaba.datax.common.plugin.RecordReceiver;
 import com.alibaba.datax.common.plugin.TaskPluginCollector;
 import com.alibaba.datax.common.util.Configuration;
+import com.datastax.driver.core.BoundStatement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +51,7 @@ public class CassandraTaskProxy {
                     LOG.info("needCreateTable========:" + CassandraHelper.needCreateTable);
                     CassandraHelper.createTable(record);
                     CassandraHelper.needCreateTable = false;
-                    CassandraHelper.initTableMeta(); //cassandraHelper 需要重新初始化tablemeta info
+                    CassandraHelper.initKeyspaceMeta(); //cassandraHelper 需要重新初始化tablemeta info
                 }
                 if(batchSize==1){
                     try {
@@ -96,70 +97,72 @@ public class CassandraTaskProxy {
 
     public void insert(Record record,TaskPluginCollector taskPluginCollector)
     {
-        StringBuilder sb = new StringBuilder();
 
-        sb.append("INSERT INTO ")
-                .append((String) configuration.getMap(Constants.KEYSPACE).get(Constants.KEYSPACE_NAME))
-                .append(".")
-                .append(configuration.getString(Constants.TABLE))
-                .append(" (");
-
-        for(int i = 0; i < column.size(); i++ ) {
-            sb.append(column.get(i));
-            if(i != (column.size() -1)) {
-                sb.append(",");
-            }
-        }
-
-        sb.append(") VALUES ( ");
-
-        for(int j = 0; j< record.getColumnNumber(); j++ ) {
-            Column column = record.getColumn(j);
-            if(column.getRawData()==null){
-                sb.append(column.getRawData());
-            }else {
-                switch (column.getType()) {
-                    case INT:
-                        sb.append(column.asBigInteger());
-                        break;
-                    case BOOL:
-                        sb.append(column.asBoolean());
-                        break;
-                    case DATE:
-                        sb.append(column.asLong());
-                        break;
-                    case LONG:
-                        sb.append(column.asLong());
-                        break;
-                    case BYTES:
-                        if (column.asBytes() == null) sb.append(column.asBytes());
-                        else sb.append("'").append(column.asBytes().toString()).append("'");
-                        break;
-                    case DOUBLE:
-                        sb.append(column.asDouble());
-                        break;
-                    case STRING:
-                        if (column.asString() == null) sb.append(column.asString());
-                        else sb.append("'" + column.asString() + "'");
+//        StringBuilder sb = new StringBuilder();
+//
+//        sb.append("INSERT INTO ")
+//                .append((String) configuration.getMap(Constants.KEYSPACE).get(Constants.KEYSPACE_NAME))
+//                .append(".")
+//                .append(configuration.getString(Constants.TABLE))
+//                .append(" (");
+//
+//        for(int i = 0; i < column.size(); i++ ) {
+//            sb.append(column.get(i));
+//            if(i != (column.size() -1)) {
+//                sb.append(",");
+//            }
+//        }
+//
+//        sb.append(") VALUES ( ");
+//
+//        for(int j = 0; j< record.getColumnNumber(); j++ ) {
+//            Column column = record.getColumn(j);
+//            if(column.getRawData()==null){
+//                sb.append(column.getRawData());
+//            }else {
+//                switch (column.getType()) {
+//                    case INT:
+//                        sb.append(column.asBigInteger());
+//                        break;
+//                    case BOOL:
+//                        sb.append(column.asBoolean());
+//                        break;
+//                    case DATE:
+//                        sb.append(column.asLong());
+//                        break;
+//                    case LONG:
+//                        sb.append(column.asLong());
+//                        break;
+//                    case BYTES:
+//                        if (column.asBytes() == null) sb.append(column.asBytes());
+//                        else sb.append("'").append(column.asBytes().toString()).append("'");
+//                        break;
+//                    case DOUBLE:
+//                        sb.append(column.asDouble());
+//                        break;
+//                    case STRING:
+//                        if (column.asString() == null) sb.append(column.asString());
+////                        else sb.append(column.asString());
 //                        else sb.append("'").append(column.asString().replace("'","" ).replace("\"","" ).replace(","," ")).append("'");
-                        break;
-                    case NULL:
-                    case BAD:
-                        break;
-                    default:
-                }
-            }
-            if(j != (record.getColumnNumber() -1)) {
-                sb.append(",");
-            }
-        }
-
-        sb.append(" )");
+//                        break;
+//                    case NULL:
+//                    case BAD:
+//                        break;
+//                    default:
+//                }
+//            }
+//            if(j != (record.getColumnNumber() -1)) {
+//                sb.append(",");
+//            }
+//        }
+//
+//        sb.append(" )");
         try {
-            CassandraHelper.insert(sb.toString());
+
+            CassandraHelper.insert(record);
         }catch (Exception e){
             taskPluginCollector.collectDirtyRecord(record,e);
-            LOG.error("insert error sql {}, error {}",sb.toString(),e.getMessage());
+            LOG.error("update insert type, insert error sql {}, error {}",record,e.getMessage());
             throw  e;
         }
     }

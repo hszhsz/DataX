@@ -8,7 +8,6 @@ import com.datastax.driver.core.exceptions.InvalidQueryException;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
-import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Table;
@@ -175,7 +174,7 @@ public class CassandraHelper {
                 sqlMap.put(Constants.WHERE, where.toString());
             }
 
-        } catch (JSQLParserException e) {
+        } catch (Exception e) {
             throw new InvalidQueryException(e.getMessage());
         }
 
@@ -257,7 +256,7 @@ public class CassandraHelper {
 
         String sql1 = "SELECT check_date , org_code , index_id , check_table , index_value , data_source , begin_date , end_date  FROM cdp.dwd_zm_check_index_value  WHERE  check_date='20200116' ALLOW FILTERING";
 
-        String sql2 = "SELECT mbr_id , receiver_name , receiver_mobile , detail_address , is_default , pt  FROM cdp.ads_cust_mbr_addr_detail  WHERE  pt='2020-06-03' allow filtering";
+        String sql2 = "SELECT mbr_id , receiver_name , receiver_mobile , detail_address , is_default , pt  FROM cdp.ads_cust_mbr_addr_detail  WHERE  pt='2020-06-03'";
         System.out.println(parseSQL(sql2));
         try {
             Statement stmt = CCJSqlParserUtil.parse(sql2);
@@ -281,7 +280,7 @@ public class CassandraHelper {
             System.out.println(colsNames);
 
 
-        } catch (JSQLParserException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 

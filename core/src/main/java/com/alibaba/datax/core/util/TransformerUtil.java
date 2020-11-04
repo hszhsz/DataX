@@ -21,6 +21,7 @@ public class TransformerUtil {
 
     public static List<TransformerExecution> buildTransformerInfo(Configuration taskConfig) {
         List<Configuration> tfConfigs = taskConfig.getListConfiguration(CoreConstant.JOB_TRANSFORMER);
+        LOG.info("transformer configs is： {} ", tfConfigs);
         if (tfConfigs == null || tfConfigs.size() == 0) {
             return null;
         }

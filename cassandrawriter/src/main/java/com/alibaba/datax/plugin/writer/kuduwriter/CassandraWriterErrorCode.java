@@ -9,6 +9,7 @@ import com.alibaba.datax.common.spi.ErrorCode;
  * @Date 上午7:43 2018/8/14
  */
 public enum CassandraWriterErrorCode implements ErrorCode {
+    CONF_ERROR("CassandraWriter-00", "配置错误."),
     INSERT_CASSANDRA_ERROR("CassandraWriter-01", "Insert Cassandra表时发生异常."),
     CREATE_CASSANDRA_ERROR("CassandraWriter-02", "create Cassandra表时发生异常.");
 
