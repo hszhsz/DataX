@@ -1,0 +1,13 @@
+{
+    "name": "alluxiowriter",
+    "parameter": {
+        "masterHostName": "",
+        "fileType": "",
+        "path": "",
+        "fileName": "",
+        "column": [],
+        "writeMode": "",
+        "fieldDelimiter": "",
+        "compress":""
+    }
+}

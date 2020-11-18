@@ -15,10 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 public final class WriterUtil {
     private static final Logger LOG = LoggerFactory.getLogger(WriterUtil.class);
@@ -111,7 +108,7 @@ public final class WriterUtil {
         }
     }
 
-    public static String getWriteTemplate(String primaryKey, List<String> columnHolders, List<String> valueHolders, String writeMode, DataBaseType dataBaseType, boolean forceUseUpdate) {
+    public static String getWriteTemplate(List<String> columnHolders, List<String> valueHolders, String writeMode, DataBaseType dataBaseType, boolean forceUseUpdate) {
         boolean isWriteModeLegal = writeMode.trim().toLowerCase().startsWith("insert")
                 || writeMode.trim().toLowerCase().startsWith("replace")
                 || writeMode.trim().toLowerCase().startsWith("update");
@@ -122,37 +119,10 @@ public final class WriterUtil {
         }
         // && writeMode.trim().toLowerCase().startsWith("replace")
         String writeDataSqlTemplate;
-        if (dataBaseType == DataBaseType.DB2 && (writeMode.trim().toLowerCase().startsWith("update") || writeMode.trim().toLowerCase().startsWith("replace"))) {
-            List<String> setHolders = new ArrayList<String>(columnHolders.size());
-            List<String> tb2Holders = new ArrayList<String>(columnHolders.size());
-            for (String columnHolder : columnHolders) {
-                if (!columnHolder.equalsIgnoreCase(primaryKey)) {
-                    setHolders.add(columnHolder + "= tb2." + columnHolder);
-                }
-                tb2Holders.add("tb2." + columnHolder);
-            }
-
-            writeDataSqlTemplate = new StringBuilder()
-                    .append("MERGE INTO %s AS tb1 USING (")
-                    .append("SELECT * FROM TABLE (")
-                    .append("VALUES (")
-                    .append(StringUtils.join(valueHolders, ","))
-                    .append(")")
-                    .append(")")
-                    .append(")AS tb2(")
-                    .append(StringUtils.join(columnHolders, ","))
-                    .append(") ON (tb1." + primaryKey + " = tb2." + primaryKey + ")")
-                    .append(" WHEN MATCHED THEN UPDATE SET ")
-                    .append(StringUtils.join(setHolders, " , "))
-                    .append(" WHEN NOT MATCHED THEN ")
-                    .append("INSERT (").append(StringUtils.join(columnHolders, ","))
-                    .append(") VALUES(").append(StringUtils.join(tb2Holders, ","))
-                    .append(")")
-                    .toString();
-            System.out.println(writeDataSqlTemplate);
-        } else if (forceUseUpdate ||
+        LOG.info("dataBaseType:{},writeMode:{},forceUseUpdate:{}",dataBaseType,writeMode,forceUseUpdate);
+        if (forceUseUpdate ||
                 ((dataBaseType == DataBaseType.MySql || dataBaseType == DataBaseType.Tddl) && writeMode.trim().toLowerCase().startsWith("update"))
-                ) {
+        ) {
             //update只在mysql下使用
 
             writeDataSqlTemplate = new StringBuilder()
@@ -162,18 +132,101 @@ public final class WriterUtil {
                     .append(onDuplicateKeyUpdateString(columnHolders))
                     .toString();
         } else {
-
-            //这里是保护,如果其他错误的使用了update,需要更换为replace
-            if (writeMode.trim().toLowerCase().startsWith("update")) {
-                writeMode = "replace";
+            if (dataBaseType == DataBaseType.PostgreSQL) {
+                writeDataSqlTemplate = new StringBuilder().append("INSERT INTO %s (")
+                        .append(StringUtils.join(columnHolders, ","))
+                        .append(") VALUES(").append(StringUtils.join(valueHolders, ","))
+                        .append(")").append(onConFlictDoString(writeMode, columnHolders)).toString();
+            } else if (dataBaseType == DataBaseType.Oracle) {
+                writeDataSqlTemplate = new StringBuilder().append(onMergeIntoDoString(writeMode, columnHolders, valueHolders)).append("INSERT (")
+                        .append(StringUtils.join(columnHolders, ","))
+                        .append(") VALUES(").append(StringUtils.join(valueHolders, ","))
+                        .append(")").toString();
+            } else {
+                //这里是保护,如果其他错误的使用了update,需要更换为replace
+                if (writeMode.trim().toLowerCase().startsWith("update")) {
+                    writeMode = "replace";
+                }
+                writeDataSqlTemplate = new StringBuilder().append(writeMode)
+                        .append(" INTO %s (").append(StringUtils.join(columnHolders, ","))
+                        .append(") VALUES(").append(StringUtils.join(valueHolders, ","))
+                        .append(")").toString();
             }
-            writeDataSqlTemplate = new StringBuilder().append(writeMode)
-                    .append(" INTO %s (").append(StringUtils.join(columnHolders, ","))
-                    .append(") VALUES(").append(StringUtils.join(valueHolders, ","))
-                    .append(")").toString();
+        }
+        LOG.info("writeDataSqlTemplate:{}",writeDataSqlTemplate);
+        return writeDataSqlTemplate;
+    }
+
+    public static String onMergeIntoDoString(String merge, List<String> columnHolders, List<String> valueHolders) {
+        String[] sArray = getStrings(merge);
+        StringBuilder sb = new StringBuilder();
+        sb.append("MERGE INTO %s A USING ( SELECT ");
+
+        boolean first = true;
+        boolean first1 = true;
+        StringBuilder str = new StringBuilder();
+        StringBuilder update = new StringBuilder();
+        for (String columnHolder : columnHolders) {
+            if (Arrays.asList(sArray).contains(columnHolder)) {
+                if (!first) {
+                    sb.append(",");
+                    str.append(" AND ");
+                } else {
+                    first = false;
+                }
+                str.append("TMP.").append(columnHolder);
+                sb.append("?");
+                str.append(" = ");
+                sb.append(" AS ");
+                str.append("A.").append(columnHolder);
+                sb.append(columnHolder);
+            }
         }
 
-        return writeDataSqlTemplate;
+        for (String columnHolder : columnHolders) {
+            if (!Arrays.asList(sArray).contains(columnHolder)) {
+                if (!first1) {
+                    update.append(",");
+                } else {
+                    first1 = false;
+                }
+                update.append(columnHolder);
+                update.append(" = ");
+                update.append("?");
+            }
+        }
+
+        sb.append(" FROM DUAL ) TMP ON (");
+        sb.append(str);
+        sb.append(" ) WHEN MATCHED THEN UPDATE SET ");
+        sb.append(update);
+        sb.append(" WHEN NOT MATCHED THEN ");
+        return sb.toString();
+    }
+
+    public static String onConFlictDoString(String conflict, List<String> columnHolders) {
+        conflict = conflict.replace("update", "");
+        StringBuilder sb = new StringBuilder();
+        sb.append(" ON CONFLICT ");
+        sb.append(conflict);
+        sb.append(" DO ");
+        if (columnHolders == null || columnHolders.size() < 1) {
+            sb.append("NOTHING");
+            return sb.toString();
+        }
+        sb.append(" UPDATE SET ");
+        boolean first = true;
+        for (String column : columnHolders) {
+            if (!first) {
+                sb.append(",");
+            } else {
+                first = false;
+            }
+            sb.append(column);
+            sb.append("=excluded.");
+            sb.append(column);
+        }
+        return sb.toString();
     }
 
     public static String onDuplicateKeyUpdateString(List<String> columnHolders) {
@@ -246,4 +299,11 @@ public final class WriterUtil {
     }
 
 
+    public static String[] getStrings(String merge) {
+        merge = merge.replace("update", "");
+        merge = merge.replace("(", "");
+        merge = merge.replace(")", "");
+        merge = merge.replace(" ", "");
+        return merge.split(",");
+    }
 }

@@ -249,6 +249,7 @@ public class CommonRdbmsReader {
                     case Types.CHAR:
                     case Types.NCHAR:
                     case Types.VARCHAR:
+                    case Types.ARRAY:
                     case Types.LONGVARCHAR:
                     case Types.NVARCHAR:
                     case Types.LONGNVARCHAR:

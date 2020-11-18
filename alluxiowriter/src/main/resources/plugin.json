@@ -1,0 +1,6 @@
+{
+    "name": "alluxiowriter",
+    "class": "com.alibaba.datax.plugin.writer.alluxiowriter.AlluxioWriter",
+    "description": "useScene: prod. mechanism: via FileSystem connect ALLUXIO write data concurrent.",
+    "developer": "alibaba"
+}

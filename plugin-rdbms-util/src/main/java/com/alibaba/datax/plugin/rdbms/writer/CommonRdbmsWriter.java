@@ -17,12 +17,13 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class CommonRdbmsWriter {
 
@@ -86,10 +87,7 @@ public class CommonRdbmsWriter {
 
         // 一般来说，是需要推迟到 task 中进行pre 的执行（单表情况例外）
         public void prepare(Configuration originalConfig) {
-            Integer tableNumber = originalConfig.getInt(Constant.TABLE_NUMBER_MARK);
-            if(null == tableNumber) {
-                tableNumber = 1;
-            }
+            int tableNumber = originalConfig.getInt(Constant.TABLE_NUMBER_MARK);
             if (tableNumber == 1) {
                 String username = originalConfig.getString(Key.USERNAME);
                 String password = originalConfig.getString(Key.PASSWORD);
@@ -111,7 +109,7 @@ public class CommonRdbmsWriter {
                 List<String> renderedPreSqls = WriterUtil.renderPreOrPostSqls(
                         preSqls, table);
 
-//                originalConfig.remove(Constant.CONN_MARK);
+                originalConfig.remove(Constant.CONN_MARK);
                 if (null != renderedPreSqls && !renderedPreSqls.isEmpty()) {
                     // 说明有 preSql 配置，则此处删除掉
                     originalConfig.remove(Key.PRE_SQL);
@@ -199,12 +197,7 @@ public class CommonRdbmsWriter {
 
         protected String writeRecordSql;
         protected String writeMode;
-        protected String primaryKey;
-        protected boolean updateIgnoreNullColumn;
-        protected List<String> updateIgnoreColumns;
-        protected Map<String, String> notNullColumnDefaultValue = Collections.emptyMap();
         protected boolean emptyAsNull;
-        protected AtomicLong counter = new AtomicLong(0L);
         protected Triple<List<String>, List<Integer>, List<String>> resultSetMetaData;
 
         public Task(DataBaseType dataBaseType) {
@@ -241,11 +234,6 @@ public class CommonRdbmsWriter {
             this.batchByteSize = writerSliceConfig.getInt(Key.BATCH_BYTE_SIZE, Constant.DEFAULT_BATCH_BYTE_SIZE);
 
             writeMode = writerSliceConfig.getString(Key.WRITE_MODE, "INSERT");
-            primaryKey = writerSliceConfig.getString(Key.PRIMARY_KEY, "ID");
-            updateIgnoreNullColumn = writerSliceConfig.getBool(Key.UPDATE_IGNORE_NULL_COLUMN, false);
-            updateIgnoreColumns = writerSliceConfig.getList(Key.UPDATE_IGNORE_COLUMNS, Collections.<String>emptyList(),String.class);
-            Map<String, String> defaultMap = Collections.emptyMap();
-            notNullColumnDefaultValue = writerSliceConfig.getMap(Key.NOT_NULL_COLUMN_DEFAULT_VALUE, defaultMap, String.class);
             emptyAsNull = writerSliceConfig.getBool(Key.EMPTY_AS_NULL, true);
             INSERT_OR_REPLACE_TEMPLATE = writerSliceConfig.getString(Constant.INSERT_OR_REPLACE_TEMPLATE_MARK);
             this.writeRecordSql = String.format(INSERT_OR_REPLACE_TEMPLATE, this.table);
@@ -274,10 +262,38 @@ public class CommonRdbmsWriter {
 
         public void startWriteWithConnection(RecordReceiver recordReceiver, TaskPluginCollector taskPluginCollector, Connection connection) {
             this.taskPluginCollector = taskPluginCollector;
+            List<String> columns = new ArrayList<>();
+            List<String> columnsOne = new ArrayList<>();
+            List<String> columnsTwo = new ArrayList<>();
+            if (this.dataBaseType == DataBaseType.Oracle) {
+                String merge = this.writeMode;
+                String[] sArray = WriterUtil.getStrings(merge);
+                int size = this.columns.size();
+                int i = 0;
+                for (int j = 0; j < size; j++) {
+                    if (Arrays.asList(sArray).contains(this.columns.get(j))) {
+                        columnsOne.add(this.columns.get(j));
+                    }
+                }
+                for (int j = 0; j < size; j++) {
+                    if (!Arrays.asList(sArray).contains(this.columns.get(j))) {
+                        columnsTwo.add(this.columns.get(j));
+                    }
+                }
+                for (String column : columnsOne) {
+                    columns.add(i, column);
+                    i++;
+                }
+                for (String column : columnsTwo) {
+                    columns.add(i, column);
+                    i++;
+                }
+            }
+            columns.addAll(this.columns);
 
             // 用于写入数据的时候的类型根据目的表字段类型转换
             this.resultSetMetaData = DBUtil.getColumnMetaData(connection,
-                    this.table, StringUtils.join(this.columns, ","));
+                    this.table, StringUtils.join(columns, ","));
             // 写数据库的SQL语句
             calcWriteRecordSql();
 
@@ -286,7 +302,7 @@ public class CommonRdbmsWriter {
             try {
                 Record record;
                 while ((record = recordReceiver.getFromReader()) != null) {
-                    if (record.getColumnNumber() != this.columnNumber) {
+                    if (record.getColumnNumber() != this.columnNumber && this.dataBaseType != DataBaseType.Oracle) {
                         // 源头读取字段列数与目的表字段写入列数不相等，直接报错
                         throw DataXException
                                 .asDataXException(
@@ -359,28 +375,42 @@ public class CommonRdbmsWriter {
             PreparedStatement preparedStatement = null;
             try {
                 connection.setAutoCommit(false);
-                if (dataBaseType == DataBaseType.DB2 && (updateIgnoreNullColumn||!updateIgnoreColumns.isEmpty())) {
-                    Statement statement = connection.createStatement();
-                    try {
-                        for (Record record : buffer) {
-                            String sql = generateDb2Statement(record, columns, table, primaryKey, notNullColumnDefaultValue,updateIgnoreColumns);
-                            statement.addBatch(sql);
+                preparedStatement = connection
+                        .prepareStatement(this.writeRecordSql);
+
+                if (this.dataBaseType == DataBaseType.Oracle) {
+                    String merge = this.writeMode;
+                    String[] sArray = WriterUtil.getStrings(merge);
+                    for (Record record : buffer) {
+                        List<Column> recordOne = new ArrayList<>();
+                        for (int j = 0; j < this.columns.size(); j++) {
+                            if (Arrays.asList(sArray).contains(this.columns.get(j))) {
+                                recordOne.add(record.getColumn(j));
+                            }
                         }
-                        statement.executeBatch();
-                    } finally {
-                        statement.close();
+                        for (int j = 0; j < this.columns.size(); j++) {
+                            if (!Arrays.asList(sArray).contains(this.columns.get(j))) {
+                                recordOne.add(record.getColumn(j));
+                            }
+                        }
+                        for (int j = 0; j < this.columns.size(); j++) {
+                            recordOne.add(record.getColumn(j));
+                        }
+                        for (int j = 0; j < recordOne.size(); j++) {
+                            record.setColumn(j, recordOne.get(j));
+                        }
+                        preparedStatement = fillPreparedStatement(
+                                preparedStatement, record);
+                        preparedStatement.addBatch();
                     }
                 } else {
-                    preparedStatement = connection
-                            .prepareStatement(this.writeRecordSql);
-
                     for (Record record : buffer) {
                         preparedStatement = fillPreparedStatement(
                                 preparedStatement, record);
                         preparedStatement.addBatch();
                     }
-                    preparedStatement.executeBatch();
                 }
+                preparedStatement.executeBatch();
                 connection.commit();
             } catch (SQLException e) {
                 LOG.warn("回滚此次写入, 采用每次写入一行方式提交. 因为:" + e.getMessage());
@@ -398,38 +428,21 @@ public class CommonRdbmsWriter {
             PreparedStatement preparedStatement = null;
             try {
                 connection.setAutoCommit(true);
-                if (dataBaseType == DataBaseType.DB2 && (updateIgnoreNullColumn||!updateIgnoreColumns.isEmpty())) {
-                    for (Record record : buffer) {
-                        Statement statement = connection.createStatement();
-                        String sql = generateDb2Statement(record, columns, table, primaryKey, notNullColumnDefaultValue,updateIgnoreColumns);
-                        try {
-                            statement.execute(sql);
-                        } catch (Exception e) {
-                            if (counter.getAndIncrement() < 10) {
-                                System.out.println("the error sql is:");
-                                System.out.println(sql);
-                            }
-                            LOG.debug(e.toString());
-                            this.taskPluginCollector.collectDirtyRecord(record, e);
-                        } finally {
-                            statement.close();
-                        }
-                    }
-                } else {
-                    preparedStatement = connection
-                            .prepareStatement(this.writeRecordSql);
-                    for (Record record : buffer) {
-                        try {
-                            preparedStatement = fillPreparedStatement(
-                                    preparedStatement, record);
-                            preparedStatement.execute();
-                        } catch (SQLException e) {
-                            LOG.debug(e.toString());
-                            this.taskPluginCollector.collectDirtyRecord(record, e);
-                        } finally {
-                            // 最后不要忘了关闭 preparedStatement
-                            preparedStatement.clearParameters();
-                        }
+                preparedStatement = connection
+                        .prepareStatement(this.writeRecordSql);
+
+                for (Record record : buffer) {
+                    try {
+                        preparedStatement = fillPreparedStatement(
+                                preparedStatement, record);
+                        preparedStatement.execute();
+                    } catch (SQLException e) {
+                        LOG.debug(e.toString());
+
+                        this.taskPluginCollector.collectDirtyRecord(record, e);
+                    } finally {
+                        // 最后不要忘了关闭 preparedStatement
+                        preparedStatement.clearParameters();
                     }
                 }
             } catch (Exception e) {
@@ -443,7 +456,7 @@ public class CommonRdbmsWriter {
         // 直接使用了两个类变量：columnNumber,resultSetMetaData
         protected PreparedStatement fillPreparedStatement(PreparedStatement preparedStatement, Record record)
                 throws SQLException {
-            for (int i = 0; i < this.columnNumber; i++) {
+            for (int i = 0; i < record.getColumnNumber(); i++) {
                 int columnSqltype = this.resultSetMetaData.getMiddle().get(i);
                 preparedStatement = fillPreparedStatementColumnType(preparedStatement, i, columnSqltype, record.getColumn(i));
             }
@@ -459,6 +472,7 @@ public class CommonRdbmsWriter {
                 case Types.CLOB:
                 case Types.NCLOB:
                 case Types.VARCHAR:
+                case Types.ARRAY:
                 case Types.LONGVARCHAR:
                 case Types.NVARCHAR:
                 case Types.LONGNVARCHAR:
@@ -599,7 +613,7 @@ public class CommonRdbmsWriter {
                     forceUseUpdate = true;
                 }
 
-                INSERT_OR_REPLACE_TEMPLATE = WriterUtil.getWriteTemplate(primaryKey, columns, valueHolders, writeMode, dataBaseType, forceUseUpdate);
+                INSERT_OR_REPLACE_TEMPLATE = WriterUtil.getWriteTemplate(columns, valueHolders, writeMode, dataBaseType, forceUseUpdate);
                 writeRecordSql = String.format(INSERT_OR_REPLACE_TEMPLATE, this.table);
             }
         }
@@ -607,75 +621,5 @@ public class CommonRdbmsWriter {
         protected String calcValueHolder(String columnType) {
             return VALUE_HOLDER;
         }
-
-
-        public static String generateDb2Statement(Record record, List<String> columnNames, String tableName, String pk, Map<String, String> notNullColumnDefaultValue,List<String> updateIgnoreColumns) {
-            List<String> columnValues = new ArrayList<String>();
-            List<String> insertColumnValues = new ArrayList<String>();
-            List<String> columnHolders = new ArrayList<String>();
-            for (int i = 0; i < record.getColumnNumber(); i++) {
-                Column column = record.getColumn(i);
-                if (column.getByteSize() != 0) {
-                    columnValues.add("'" + column.asString() + "'");
-                    insertColumnValues.add("'" + column.asString() + "'");
-                    columnHolders.add(columnNames.get(i));
-                }
-            }
-
-            List<String> insertColumnHolders = new ArrayList<String>();
-            List<String> setHolders = new ArrayList<String>(columnHolders.size());
-            List<String> insertTb2Holders= new ArrayList<String>(columnHolders.size());
-            for (String columnHolder : columnHolders) {
-                if (!columnHolder.equalsIgnoreCase(pk)&&!updateIgnoreColumns.contains(columnHolder)) {
-                    setHolders.add(columnHolder + "= tb2." + columnHolder);
-                }
-                insertTb2Holders.add("tb2." + columnHolder);
-                insertColumnHolders.add(columnHolder);
-            }
-            if (!notNullColumnDefaultValue.isEmpty()) {
-                for (Map.Entry<String, String> mapEntry : notNullColumnDefaultValue.entrySet()) {
-                    if (!insertColumnHolders.contains(mapEntry.getKey())) {
-                        insertColumnHolders.add(mapEntry.getKey());
-                        insertColumnValues.add(mapEntry.getValue());
-                        insertTb2Holders.add("tb2." + mapEntry.getKey());
-                    }
-                }
-            }
-            if (columnValues.isEmpty() || setHolders.isEmpty()) {
-                System.out.println("record all column or set statement is empty,record is skipped,record:" + record.toString());
-                return null;
-            }
-
-            StringBuilder stringBuilder = new StringBuilder()
-                    .append("MERGE INTO ").append(tableName).append(" AS tb1 USING (")
-                    .append("SELECT * FROM TABLE (")
-                    .append("VALUES (")
-                    .append(StringUtils.join(insertColumnValues, ","))
-                    .append(")")
-                    .append(")")
-                    .append(")AS tb2(")
-                    .append(StringUtils.join(insertColumnHolders, ","))
-                    .append(") ON (tb1." + pk + " = tb2." + pk + ")")
-                    .append(" WHEN MATCHED THEN UPDATE SET ")
-                    .append(StringUtils.join(setHolders, " , "))
-                    .append(" WHEN NOT MATCHED THEN ");
-
-
-            return stringBuilder.append("INSERT (").append(StringUtils.join(insertColumnHolders, ","))
-                    .append(") VALUES(").append(StringUtils.join(insertTb2Holders, ","))
-                    .append(")")
-                    .toString();
-        }
-
-//        public static void main(String[] args){
-//            List<String> columnNames= Arrays.asList("A","B","C","D","E");
-//            Column column1=new StringColumn("123");
-//            Column column2=new StringColumn(null);
-//            Column column3=new DateColumn(System.currentTimeMillis());
-//            Column column4=new BoolColumn(false);
-//            Column column5=new LongColumn(666L);
-//            List<Column> columns= Arrays.asList(column1,column2,column3,column4,column5);
-//            System.out.println(generateDb2Statement(columns,columnNames,"TEST","A"));
-//        }
     }
 }

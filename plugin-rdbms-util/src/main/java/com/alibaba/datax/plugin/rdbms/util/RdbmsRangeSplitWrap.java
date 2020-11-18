@@ -84,7 +84,7 @@ public final class RdbmsRangeSplitWrap {
     }
     
 
-    public static String quoteConstantValue(String aString, DataBaseType dataBaseType) {
+    private static String quoteConstantValue(String aString, DataBaseType dataBaseType) {
         if (null == dataBaseType) {
             return aString;
         }
