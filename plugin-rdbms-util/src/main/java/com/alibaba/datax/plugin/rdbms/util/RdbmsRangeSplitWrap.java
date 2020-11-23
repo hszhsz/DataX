@@ -82,9 +82,9 @@ public final class RdbmsRangeSplitWrap {
     public static String wrapFirstLastPoint(BigInteger firstPoint, BigInteger lastPoint, String columnName) {
         return wrapFirstLastPoint(firstPoint.toString(), lastPoint.toString(), columnName, "", null);
     }
-    
 
-    private static String quoteConstantValue(String aString, DataBaseType dataBaseType) {
+
+    public static String quoteConstantValue(String aString, DataBaseType dataBaseType) {
         if (null == dataBaseType) {
             return aString;
         }

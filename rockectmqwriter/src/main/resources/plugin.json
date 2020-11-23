@@ -1,0 +1,6 @@
+{
+    "name": "rocketmqwriter",
+    "class": "com.alibaba.datax.plugin.writer.rocketmqwriter.RocketmqWriter",
+    "description": "异构数据源同步数据到rocketmq",
+    "developer": "globalegrow-bigdata-ChengJie"
+}
