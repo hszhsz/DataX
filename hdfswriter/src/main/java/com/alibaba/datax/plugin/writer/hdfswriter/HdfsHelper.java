@@ -54,6 +54,10 @@ public  class HdfsHelper {
         }
         hadoopConf.set(HDFS_DEFAULTFS_KEY, defaultFS);
 
+        //支持alluxio
+        hadoopConf.set("fs.alluxio.impl", "alluxio.hadoop.FileSystem");
+        hadoopConf.set("fs.AbstractFileSystem.alluxio.impl", "alluxio.hadoop.AlluxioFileSystem");
+
         //是否有Kerberos认证
         this.haveKerberos = taskConfig.getBool(Key.HAVE_KERBEROS, false);
         if(haveKerberos){

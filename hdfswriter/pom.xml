@@ -43,11 +43,23 @@
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-hdfs</artifactId>
             <version>${hadoop.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-all</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
             <version>${hadoop.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.hadoop</groupId>
@@ -58,6 +70,12 @@
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-mapreduce-client-core</artifactId>
             <version>${hadoop.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -98,6 +116,42 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.alluxio</groupId>
+            <artifactId>alluxio-core-client-hdfs</artifactId>
+            <version>2.3.0-2</version>
+<!--            <exclusions>-->
+<!--                <exclusion>-->
+<!--                    <groupId>io.grpc</groupId>-->
+<!--                    <artifactId>grpc-netty</artifactId>-->
+<!--                </exclusion>-->
+<!--            </exclusions>-->
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>23.6-jre</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpcore</artifactId>
+            <version>4.4.8</version>
+        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>io.netty</groupId>-->
+<!--            <artifactId>netty-all</artifactId>-->
+<!--            <version>4.1.32.Final</version>-->
+<!--        </dependency>-->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-buffer</artifactId>
+            <version>4.1.45.Final</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.14.0</version>
+        </dependency>
     </dependencies>
 
     <build>
