@@ -1,4 +1,4 @@
-package com.alibaba.datax.plugin.writer.cassandrawriter;
+package com.alibaba.datax.plugin.writer.kuduwriter;
 
 import com.alibaba.datax.common.element.Column;
 import com.alibaba.datax.common.element.Record;

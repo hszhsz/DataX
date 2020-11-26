@@ -74,7 +74,7 @@
         <module>hdfswriter</module>
         <module>streamwriter</module>
         <module>otswriter</module>
-        <module>oraclewriter</module>
+<!--        <module>oraclewriter</module>-->
         <module>sqlserverwriter</module>
         <module>postgresqlwriter</module>
         <module>osswriter</module>
@@ -93,6 +93,7 @@
         <!-- common support module -->
         <module>plugin-rdbms-util</module>
         <module>plugin-unstructured-storage-util</module>
+        <module>rockectmqwriter</module>
     </modules>
 
     <dependencyManagement>
