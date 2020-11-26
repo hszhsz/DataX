@@ -17,7 +17,7 @@
     <packaging>pom</packaging>
 
     <properties>
-        <jdk-version>1.8</jdk-version>
+        <jdk-version>1.7</jdk-version>
         <datax-project-version>0.0.1-SNAPSHOT</datax-project-version>
         <commons-lang3-version>3.3.2</commons-lang3-version>
         <commons-configuration-version>1.10</commons-configuration-version>

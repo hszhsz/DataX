@@ -90,17 +90,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.alluxio</groupId>
-            <artifactId>alluxio-core-client-hdfs</artifactId>
-            <version>2.3.0-2</version>
-            <!--            <exclusions>-->
-            <!--                <exclusion>-->
-            <!--                    <groupId>io.grpc</groupId>-->
-            <!--                    <artifactId>grpc-netty</artifactId>-->
-            <!--                </exclusion>-->
-            <!--            </exclusions>-->
-        </dependency>
-        <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>23.6-jre</version>
@@ -110,20 +99,32 @@
             <artifactId>httpcore</artifactId>
             <version>4.4.8</version>
         </dependency>
-        <!--        <dependency>-->
-        <!--            <groupId>io.netty</groupId>-->
-        <!--            <artifactId>netty-all</artifactId>-->
-        <!--            <version>4.1.32.Final</version>-->
-        <!--        </dependency>-->
         <dependency>
             <groupId>io.netty</groupId>
-            <artifactId>netty-buffer</artifactId>
+            <artifactId>netty-all</artifactId>
             <version>4.1.45.Final</version>
         </dependency>
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
-            <version>3.14.0</version>
+            <version>4.0.0-rc-2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.alluxio</groupId>
+            <artifactId>alluxio-core-common</artifactId>
+            <version>2.3.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.alluxio</groupId>
+            <artifactId>alluxio-shaded-client</artifactId>
+            <version>2.3.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.alluxio</groupId>
+            <artifactId>alluxio-core-client-fs</artifactId>
+            <version>2.3.0</version>
         </dependency>
     </dependencies>
 
