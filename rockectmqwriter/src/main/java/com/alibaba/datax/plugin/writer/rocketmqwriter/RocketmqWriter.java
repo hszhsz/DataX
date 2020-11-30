@@ -10,6 +10,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 
 import com.google.common.collect.Lists;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.rocketmq.client.exception.MQBrokerException;
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
@@ -22,7 +23,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * @author ChengJie
@@ -34,6 +37,7 @@ public class RocketmqWriter extends Writer {
     private final static String WRITE_COLUMNS = "column";
     private final static String WRITE_TOPIC = "topic";
     private final static String WRITE_TAG = "tag";
+    private final static String WRITE_CDP_TAG = "cdpTag";
 
     private final static int BATCH_SIZE = 1000;
 
@@ -148,20 +152,38 @@ public class RocketmqWriter extends Writer {
                 List<Message> dataList= Lists.newArrayList();
                 log.info("本次批量处理数据数：{},当前第",writerBuffer.size());
                 for(Record record:writerBuffer){
-                    JSONObject jsonObject=new JSONObject();
-                    int length = record.getColumnNumber();
-                    for (int i = 0; i < length; i++) {
-                        Column column=record.getColumn(i);
-                        jsonObject.put(columnList.get(i),column.getRawData());
-
+                    String msgContent=null;
+                    if(Objects.nonNull(conf.getString(WRITE_CDP_TAG)) &&
+                            StringUtils.isNotBlank(conf.getString(WRITE_CDP_TAG))){
+                        List<String> cdpTagList = this.conf.getList(WRITE_CDP_TAG, String.class);
+                        String value = cdpTagList.get(0);
+                        String cdpTag=new String(Base64.getDecoder().decode(value), "UTF-8");
+                        Column userIdColumn = record.getColumn(0);
+                        Column codeValueColumn = record.getColumn(2);
+                        Column codeValueIdColumn = record.getColumn(3);
+                        log.info("cdp tag ********* {} {}",record,cdpTag);
+                        String result=String.format(cdpTag,userIdColumn.getRawData(),codeValueColumn.getRawData(),codeValueIdColumn.getRawData());
+                        cdpTagList=Lists.newArrayList();
+                        cdpTagList.add(result);
+                        log.info("result ********* {}",cdpTagList);
+                        msgContent=cdpTagList.toString();
+                    }else{
+                        int length = record.getColumnNumber();
+                        for (int i = 0; i < length; i++) {
+                            JSONObject jsonObject=new JSONObject();
+                            Column column=record.getColumn(i);
+                            jsonObject.put(columnList.get(i),column.getRawData());
+                            msgContent=jsonObject.toJSONString();
+                        }
                     }
-                    Message msg = new Message(conf.getString(WRITE_TOPIC) /* Topic */,
-                            conf.getString(WRITE_TAG) /* Tag */,
-                            jsonObject.toJSONString().getBytes(RemotingHelper.DEFAULT_CHARSET) /* Message body */
-                    );
-                    dataList.add(msg);
-                    index++;
-
+                    if(Objects.nonNull(msgContent)){
+                        Message msg = new Message(conf.getString(WRITE_TOPIC) /* Topic */,
+                                conf.getString(WRITE_TAG) /* Tag */,
+                                msgContent.getBytes(RemotingHelper.DEFAULT_CHARSET) /* Message body */
+                        );
+                        dataList.add(msg);
+                        index++;
+                    }
                     if(index%10==0){
                         sendMsg(dataList);
                     }
@@ -177,7 +199,8 @@ public class RocketmqWriter extends Writer {
             return index;
         }
 
-        private void sendMsg(List<Message> dataList) throws InterruptedException, RemotingException, MQClientException, MQBrokerException, UnsupportedEncodingException {
+        private void sendMsg(List<Message> dataList) throws InterruptedException, RemotingException,
+                MQClientException, MQBrokerException, UnsupportedEncodingException {
 
             // 发送消息到一个Broker
             producer.send(dataList);

@@ -19,6 +19,7 @@ public class RocketmqUtil {
     private final static String WRITE_USER = "username";
     private final static String WRITE_PWD = "password";
     private final static String WRITE_GROUP = "groupName";
+    private final static String WRITE_TOPIC = "topic";
     private RocketmqUtil(){}
 
     public DefaultMQProducer getProducer(Configuration conf){
@@ -37,6 +38,7 @@ public class RocketmqUtil {
             DefaultMQProducer producer = new DefaultMQProducer(conf.getString(WRITE_GROUP));
             // 设置NameServer的地址
             producer.setNamesrvAddr(conf.getString(WRITE_HOST)+":"+conf.getString(WRITE_PORT));
+            producer.setCreateTopicKey(conf.getString(WRITE_TOPIC));
             // 启动Producer实例
             return producer;
     }
