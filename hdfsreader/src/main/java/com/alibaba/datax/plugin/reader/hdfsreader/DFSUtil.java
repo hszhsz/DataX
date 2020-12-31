@@ -10,6 +10,8 @@ import com.alibaba.datax.plugin.unstructuredstorage.reader.UnstructuredStorageRe
 import com.alibaba.datax.plugin.unstructuredstorage.reader.UnstructuredStorageReaderUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
@@ -29,6 +31,8 @@ import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapred.*;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.ReflectionUtils;
+import org.apache.parquet.avro.AvroParquetReader;
+import org.apache.parquet.hadoop.ParquetReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -365,6 +369,155 @@ public class DFSUtil {
         } else {
             String message = String.format("请确认您所读取的列配置正确！columnIndexMax 小于0,column:%s", JSON.toJSONString(column));
             throw DataXException.asDataXException(HdfsReaderErrorCode.BAD_CONFIG_VALUE, message);
+        }
+    }
+
+    public void parquetFileStartRead(String sourceParquestFilePath, Configuration readerSliceConfig,
+                                     RecordSender recordSender, TaskPluginCollector taskPluginCollector) {
+        LOG.info("Start Read parquetFile [{}].", sourceParquestFilePath);
+        List<ColumnEntry> column = UnstructuredStorageReaderUtil
+                .getListColumnEntry(readerSliceConfig, com.alibaba.datax.plugin.unstructuredstorage.reader.Key.COLUMN);
+        String nullFormat = readerSliceConfig.getString(com.alibaba.datax.plugin.unstructuredstorage.reader.Key.NULL_FORMAT);
+        boolean isReadAllColumns = false;
+        int columnIndexMax;
+        // 判断是否读取所有列
+        if (null == column || column.isEmpty()) {
+            int allColumnsCount = getAllColumnsCount(sourceParquestFilePath);
+            columnIndexMax = allColumnsCount - 1;
+            isReadAllColumns = true;
+        }
+        else {
+            columnIndexMax = getMaxIndex(column);
+        }
+        if (columnIndexMax >= 0) {
+            JobConf conf = new JobConf(hadoopConf);
+            Path parquetFilePath = new Path(sourceParquestFilePath);
+//            InputFile inputFile =
+            GenericData decimalSupport = GenericData.get();
+//            decimalSupport.addLogicalTypeConversion(new Conversions.DecimalConversion());
+            try (ParquetReader<GenericData.Record> reader = AvroParquetReader
+                    .<GenericData.Record>builder(parquetFilePath)
+                    .withDataModel(decimalSupport)
+                    .withConf(conf)
+                    .build()) {
+                GenericData.Record gRecord = reader.read();
+                Schema schema = gRecord.getSchema();
+                while (gRecord != null) {
+                    transportOneRecord(column, gRecord, schema, recordSender, taskPluginCollector, isReadAllColumns, nullFormat);
+                    gRecord = reader.read();
+                }
+            }
+            catch (IOException e) {
+                String message = String.format("从parquetfile文件路径[%s]中读取数据发生异常，请联系系统管理员。"
+                        , sourceParquestFilePath);
+                LOG.error(message);
+                throw DataXException.asDataXException(HdfsReaderErrorCode.READ_FILE_ERROR, message);
+            }
+        }
+        else {
+            String message = String.format("请确认您所读取的列配置正确！columnIndexMax 小于0,column:%s", JSON.toJSONString(column));
+            throw DataXException.asDataXException(HdfsReaderErrorCode.BAD_CONFIG_VALUE, message);
+        }
+    }
+
+    /*
+     * create a transport record for Parquet file
+     *
+     *
+     */
+    private void transportOneRecord(List<ColumnEntry> columnConfigs, GenericData.Record gRecord, Schema schema, RecordSender recordSender,
+                                    TaskPluginCollector taskPluginCollector, boolean isReadAllColumns, String nullFormat)
+    {
+        Record record = recordSender.createRecord();
+        Column columnGenerated;
+        try {
+            if (isReadAllColumns) {
+                for (int i = 0; i < schema.getFields().size(); i++) {
+                    record.addColumn(new StringColumn((String) gRecord.get(i)));
+                }
+            }
+            else {
+                for (ColumnEntry columnEntry : columnConfigs) {
+                    String columnType = columnEntry.getType();
+                    Integer columnIndex = columnEntry.getIndex();
+                    String columnConst = columnEntry.getValue();
+                    String columnValue = null;
+                    if (null != columnIndex) {
+                        if (null != gRecord.get(columnIndex)) {
+                            columnValue = gRecord.get(columnIndex).toString();
+                        }
+                    }
+                    else {
+                        columnValue = columnConst;
+                    }
+                    Type type = Type.valueOf(columnType.toUpperCase());
+                    if (StringUtils.equals(columnValue, nullFormat)) {
+                        columnValue = null;
+                    }
+                    try {
+                        switch (type) {
+                            case STRING:
+                                columnGenerated = new StringColumn(columnValue);
+                                break;
+                            case LONG:
+                                columnGenerated = new LongColumn(columnValue);
+                                break;
+                            case DOUBLE:
+                                columnGenerated = new DoubleColumn(columnValue);
+                                break;
+                            case BOOLEAN:
+                                columnGenerated = new BoolColumn(columnValue);
+                                break;
+                            case DATE:
+                                if (columnValue == null) {
+                                    columnGenerated = new DateColumn((Date) null);
+                                }
+                                else {
+                                    String formatString = columnEntry.getFormat();
+                                    if (StringUtils.isNotBlank(formatString)) {
+                                        // 用户自己配置的格式转换
+                                        SimpleDateFormat format = new SimpleDateFormat(
+                                                formatString);
+                                        columnGenerated = new DateColumn(
+                                                format.parse(columnValue));
+                                    }
+                                    else {
+                                        // 框架尝试转换
+                                        columnGenerated = new DateColumn(
+                                                new StringColumn(columnValue)
+                                                        .asDate());
+                                    }
+                                }
+                                break;
+                            default:
+                                String errorMessage = String.format(
+                                        "您配置的列类型暂不支持 : [%s]", columnType);
+                                LOG.error(errorMessage);
+                                throw DataXException
+                                        .asDataXException(
+                                                UnstructuredStorageReaderErrorCode.NOT_SUPPORT_TYPE,
+                                                errorMessage);
+                        }
+                    }
+                    catch (Exception e) {
+                        throw new IllegalArgumentException(String.format(
+                                "类型转换错误, 无法将[%s] 转换为[%s]", columnValue, type));
+                    }
+                    record.addColumn(columnGenerated);
+                } // end for
+            } // end else
+            recordSender.sendToWriter(record);
+        }
+        catch (IllegalArgumentException | IndexOutOfBoundsException iae) {
+            taskPluginCollector
+                    .collectDirtyRecord(record, iae.getMessage());
+        }
+        catch (Exception e) {
+            if (e instanceof DataXException) {
+                throw (DataXException) e;
+            }
+            // 每一种转换失败都是脏数据处理,包括数字格式 & 日期格式
+            taskPluginCollector.collectDirtyRecord(record, e.getMessage());
         }
     }
 

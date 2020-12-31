@@ -9,6 +9,10 @@ import com.alibaba.datax.common.util.Configuration;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Lists;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.hadoop.fs.*;
@@ -22,11 +26,17 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.mapred.*;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.parquet.avro.AvroParquetWriter;
+import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public  class HdfsHelper {
     public static final Logger LOG = LoggerFactory.getLogger(HdfsWriter.Job.class);
@@ -87,6 +97,66 @@ public  class HdfsHelper {
             LOG.error(message);
             throw DataXException.asDataXException(HdfsWriterErrorCode.CONNECT_HDFS_IO_ERROR, message);
         }
+    }
+
+    public static GenericRecord transportParRecord(
+            com.alibaba.datax.common.element.Record record, List<Configuration> columnsConfiguration,
+            TaskPluginCollector taskPluginCollector, GenericRecordBuilder builder) {
+
+        int recordLength = record.getColumnNumber();
+        if (0 != recordLength) {
+            Column column;
+            for (int i = 0; i < recordLength; i++) {
+                column = record.getColumn(i);
+                if (null != column.getRawData()) {
+                    String rowData = column.getRawData().toString();
+                    String colname = columnsConfiguration.get(i).getString("name");
+                    String typename = columnsConfiguration.get(i).getString(Key.TYPE).toUpperCase();
+                    if (typename.contains("DECIMAL(")) {
+                        typename = "DECIMAL";
+                    }
+                    SupportHiveDataType columnType = SupportHiveDataType.valueOf(typename);
+                    //根据writer端类型配置做类型转换
+                    try {
+                        switch (columnType) {
+                            case INT:
+                            case BIGINT:
+                                builder.set(colname, Integer.valueOf(rowData));
+                                break;
+                            case FLOAT:
+                                builder.set(colname, Float.valueOf(rowData));
+                                break;
+                            case DOUBLE:
+                                builder.set(colname, column.asDouble());
+                                break;
+                            case STRING:
+                                builder.set(colname, column.asString());
+                                break;
+                            case BOOLEAN:
+                                builder.set(colname, column.asBoolean());
+                                break;
+                            default:
+                                throw DataXException
+                                        .asDataXException(
+                                                HdfsWriterErrorCode.ILLEGAL_VALUE,
+                                                String.format(
+                                                        "您的配置文件中的列配置信息有误. 因为DataX 不支持数据库写入这种字段类型. 字段名:[%s], 字段类型:[%s]. 请修改表中该字段的类型或者不同步该字段.",
+                                                        columnsConfiguration.get(i).getString(Key.NAME),
+                                                        columnsConfiguration.get(i).getString(Key.TYPE)));
+                        }
+                    }
+                    catch (Exception e) {
+                        // warn: 此处认为脏数据
+                        String message = String.format(
+                                "字段类型转换错误：目标字段为[%s]类型，实际字段值为[%s].",
+                                columnsConfiguration.get(i).getString(Key.TYPE), column.getRawData());
+                        taskPluginCollector.collectDirtyRecord(record, message);
+                        break;
+                    }
+                }
+            }
+        }
+        return builder.build();
     }
 
     private void kerberosAuthentication(String kerberosPrincipal, String kerberosKeytabFilePath){
@@ -208,6 +278,20 @@ public  class HdfsHelper {
         LOG.info(String.format("finish delete tmp dir [%s] .",path.toString()));
     }
 
+    public void createDir(Path path){
+        LOG.info(String.format("start create dir [%s] .",path.toString()));
+        try {
+            if(!isPathexists(path.toString())) {
+                fileSystem.mkdirs(path);
+            }
+        } catch (Exception e) {
+            String message = String.format("创建目录[%s]时发生IO异常,请检查您的网络是否正常！", path.toString());
+            LOG.error(message);
+            throw DataXException.asDataXException(HdfsWriterErrorCode.CONNECT_HDFS_IO_ERROR, e);
+        }
+        LOG.info(String.format("finish create dir [%s] .",path.toString()));
+    }
+
     public void renameFile(HashSet<String> tmpFiles, HashSet<String> endFiles){
         Path tmpFilesParent = null;
         if(tmpFiles.size() != endFiles.size()){
@@ -226,17 +310,19 @@ public  class HdfsHelper {
                     }
                     LOG.info(String.format("start rename file [%s] to file [%s].", srcFile,dstFile));
                     boolean renameTag = false;
-                    long fileLen = fileSystem.getFileStatus(srcFilePah).getLen();
-                    if(fileLen>0){
-                        renameTag = fileSystem.rename(srcFilePah,dstFilePah);
-                        if(!renameTag){
-                            String message = String.format("重命名文件[%s]失败,请检查您的网络是否正常！", srcFile);
-                            LOG.error(message);
-                            throw DataXException.asDataXException(HdfsWriterErrorCode.HDFS_RENAME_FILE_ERROR, message);
+                    if(fileSystem.exists(srcFilePah)) {
+                        long fileLen = fileSystem.getFileStatus(srcFilePah).getLen();
+                        if (fileLen > 0) {
+                            renameTag = fileSystem.rename(srcFilePah, dstFilePah);
+                            if (!renameTag) {
+                                String message = String.format("重命名文件[%s]失败,请检查您的网络是否正常！", srcFile);
+                                LOG.error(message);
+                                throw DataXException.asDataXException(HdfsWriterErrorCode.HDFS_RENAME_FILE_ERROR, message);
+                            }
+                            LOG.info(String.format("finish rename file [%s] to file [%s].", srcFile, dstFile));
+                        } else {
+                            LOG.info(String.format("文件［%s］内容为空,请检查写入是否正常！", srcFile));
                         }
-                        LOG.info(String.format("finish rename file [%s] to file [%s].", srcFile,dstFile));
-                    }else{
-                        LOG.info(String.format("文件［%s］内容为空,请检查写入是否正常！", srcFile));
                     }
                 }
             }catch (Exception e) {
@@ -354,6 +440,85 @@ public  class HdfsHelper {
                     String.format("目前不支持您配置的 compress 模式 : [%s]", compress));
         }
         return codecClass;
+    }
+
+    public String getDecimalprec(String type) {
+        String regEx = "[^0-9]";
+        Pattern p = Pattern.compile(regEx);
+        Matcher m = p.matcher(type);
+        return m.replaceAll(" ").trim().split(" ")[0];
+    }
+
+    public String getDecimalscale(String type) {
+        String regEx = "[^0-9]";
+        Pattern p = Pattern.compile(regEx);
+        Matcher m = p.matcher(type);
+        return m.replaceAll(" ").trim().split(" ")[1];
+    }
+
+    /**
+     * 写Parquetfile类型文件
+     */
+    public void parquetFileStartWrite(RecordReceiver lineReceiver, Configuration config, String fileName,
+                                      TaskPluginCollector taskPluginCollector)
+    {
+
+        List<Configuration> columns = config.getListConfiguration(Key.COLUMN);
+        String compress = config.getString(Key.COMPRESS, "UNCOMPRESSED").toUpperCase().trim();
+        if ("NONE".equals(compress)) {
+            compress = "UNCOMPRESSED";
+        }
+//        List<String> columnNames = getColumnNames(columns)
+//        List<ObjectInspector> columnTypeInspectors = getparColumnTypeInspectors(columns);
+//        StructObjectInspector inspector = ObjectInspectorFactory
+//                .getStandardStructObjectInspector(columnNames, columnTypeInspectors);
+        Path path = new Path(fileName);
+        String strschema = "{"
+                + "\"type\": \"record\"," //Must be set as record
+                + "\"name\": \"record\"," //Not used in Parquet, can put anything
+                + "\"fields\": [";
+
+        for (Configuration column : columns) {
+            if (column.getString("type").toUpperCase().contains("DECIMAL(")) {
+                strschema += " {\"name\": \"" + column.getString("name")
+                        + "\", \"type\": {\"type\": \"fixed\", \"size\":16, \"logicalType\": \"decimal\", \"name\": \"decimal\", \"precision\": "
+                        + getDecimalprec(column.getString("type")) + ", \"scale\":"
+                        + getDecimalscale(column.getString("type")) + "}},";
+            }
+            else {
+                strschema += " {\"name\": \"" + column.getString("name") + "\", \"type\": \""
+                        + column.getString("type").toLowerCase() + "\"},";
+            }
+        }
+        strschema = strschema.substring(0, strschema.length() - 1) + " ]}";
+        Schema.Parser parser = new Schema.Parser().setValidate(true);
+        Schema parSchema = parser.parse(strschema);
+
+        CompressionCodecName codecName = CompressionCodecName.fromConf(compress);
+
+        GenericData decimalSupport = GenericData.get();
+//        decimalSupport.addLogicalTypeConversion(new Conversions.DecimalConversion());
+        try {
+            ParquetWriter<GenericRecord> writer = AvroParquetWriter
+                    .<GenericRecord>builder(path)
+                    .withDataModel(decimalSupport)
+                    .withCompressionCodec(codecName)
+                    .withSchema(parSchema)
+                    .build();
+
+            GenericRecordBuilder builder = new GenericRecordBuilder(parSchema);
+            com.alibaba.datax.common.element.Record record;
+            while ((record = lineReceiver.getFromReader()) != null) {
+                GenericRecord transportResult = transportParRecord(record, columns, taskPluginCollector, builder);
+                writer.write(transportResult);
+            }
+            writer.close();
+        }
+        catch (Exception e) {
+            LOG.error("写文件文件[{}]时发生IO异常,请检查您的网络是否正常！", fileName);
+            deleteDir(path.getParent());
+            throw DataXException.asDataXException(HdfsWriterErrorCode.Write_FILE_IO_ERROR, e);
+        }
     }
 
     /**
