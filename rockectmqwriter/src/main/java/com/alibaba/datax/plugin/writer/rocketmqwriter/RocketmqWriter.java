@@ -137,7 +137,7 @@ public class RocketmqWriter extends Writer {
                 }
             }
             if (!writerBuffer.isEmpty()) {
-                log.info("本次需要处理的数据大小：{}",writerBuffer.size());
+                //log.info("本次需要处理的数据大小：{}",writerBuffer.size());
                 total += doBatchInsert(writerBuffer);
                 writerBuffer.clear();
             }
@@ -150,7 +150,7 @@ public class RocketmqWriter extends Writer {
             int index = 0;
             try {
                 List<Message> dataList= Lists.newArrayList();
-                log.info("本次批量处理数据数：{},当前第",writerBuffer.size());
+                //log.info("本次批量处理数据数：{},当前第",writerBuffer.size());
                 for(Record record:writerBuffer){
                     String msgContent=null;
                     if(Objects.nonNull(conf.getString(WRITE_CDP_TAG)) &&
@@ -161,12 +161,14 @@ public class RocketmqWriter extends Writer {
                         Column userIdColumn = record.getColumn(0);
                         Column codeValueColumn = record.getColumn(2);
                         Column codeValueIdColumn = record.getColumn(3);
-                        log.info("cdp tag ********* {} {}",record,cdpTag);
-                        String result=String.format(cdpTag,userIdColumn.getRawData(),codeValueColumn.getRawData(),codeValueIdColumn.getRawData());
+                        //log.info("cdp tag ********* {} {}",record,cdpTag);
+                        String result=String.format(cdpTag,userIdColumn.getRawData(),codeValueIdColumn.getRawData(),codeValueColumn.getRawData());
                         cdpTagList=Lists.newArrayList();
                         cdpTagList.add(result);
-                        log.info("result ********* {}",cdpTagList);
-                        msgContent=cdpTagList.toString();
+                        JSONObject memberTagInfo=new JSONObject();
+                        memberTagInfo.put("memberTagInfo",cdpTagList);
+                        //log.info("result ********* {}",cdpTagList);
+                        msgContent=memberTagInfo.toJSONString();
                     }else{
                         int length = record.getColumnNumber();
                         for (int i = 0; i < length; i++) {
