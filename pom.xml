@@ -55,7 +55,7 @@
         <module>otsreader</module>
         <module>otsstreamreader</module>
         <module>txtfilereader</module>
-<!--        <module>hdfsreader</module>-->
+        <module>hdfsreader</module>
         <module>streamreader</module>
         <module>ossreader</module>
         <module>ftpreader</module>
@@ -71,10 +71,10 @@
         <module>odpswriter</module>
         <module>txtfilewriter</module>
         <module>ftpwriter</module>
-<!--        <module>hdfswriter</module>-->
+        <module>hdfswriter</module>
         <module>streamwriter</module>
         <module>otswriter</module>
-<!--        <module>oraclewriter</module>-->
+        <module>oraclewriter</module>
         <module>sqlserverwriter</module>
         <module>postgresqlwriter</module>
         <module>osswriter</module>

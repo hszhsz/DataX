@@ -10,6 +10,7 @@ import org.apache.commons.io.Charsets;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,8 +52,10 @@ public class HdfsWriter extends Writer {
             this.defaultFS = this.writerSliceConfig.getNecessaryValue(Key.DEFAULT_FS, HdfsWriterErrorCode.REQUIRED_VALUE);
             //fileType check
             this.fileType = this.writerSliceConfig.getNecessaryValue(Key.FILE_TYPE, HdfsWriterErrorCode.REQUIRED_VALUE);
-            if( !fileType.equalsIgnoreCase("ORC") && !fileType.equalsIgnoreCase("TEXT")){
-                String message = "HdfsWriter插件目前只支持ORC和TEXT两种格式的文件,请将filetype选项的值配置为ORC或者TEXT";
+            if( !fileType.equalsIgnoreCase("ORC") &&
+                !fileType.equalsIgnoreCase("TEXT") &&
+                !fileType.equalsIgnoreCase("PARQUET")){
+                String message = "HdfsWriter插件目前只支持ORC、TEXT和PARQUET三种格式的文件,请将filetype选项的值配置为ORC、TEXT或者PARQUET";
                 throw DataXException.asDataXException(HdfsWriterErrorCode.ILLEGAL_VALUE, message);
             }
             //path
@@ -126,6 +129,19 @@ public class HdfsWriter extends Writer {
                     }
                 }
 
+            } else if (fileType.equalsIgnoreCase("PARQUET")) {
+                // parquet 默认的非压缩标志是 UNCOMPRESSED ，而不是常见的 NONE，这里统一为 NONE
+                if ("NONE".equals(compress)) {
+                    compress = "UNCOMPRESSED";
+                }
+                try {
+                    CompressionCodecName.fromConf(compress);
+                }
+                catch (Exception e) {
+                    throw DataXException.asDataXException(HdfsWriterErrorCode.ILLEGAL_VALUE,
+                            String.format("目前PARQUET 格式仅支持 %s 压缩, 不支持您配置的 compress 模式 : [%s]",
+                                    Arrays.toString(CompressionCodecName.values()), compress));
+                }
             }
             //Kerberos check
             Boolean haveKerberos = this.writerSliceConfig.getBool(Key.HAVE_KERBEROS, false);
@@ -147,42 +163,33 @@ public class HdfsWriter extends Writer {
 
         @Override
         public void prepare() {
-            //若路径已经存在，检查path是否是目录
-            if(hdfsHelper.isPathexists(path)){
-                if(!hdfsHelper.isPathDir(path)){
-                    throw DataXException.asDataXException(HdfsWriterErrorCode.ILLEGAL_VALUE,
-                            String.format("您配置的path: [%s] 不是一个合法的目录, 请您注意文件重名, 不合法目录名等情况.",
-                                    path));
-                }
-                //根据writeMode对目录下文件进行处理
-                Path[] existFilePaths = hdfsHelper.hdfsDirList(path,fileName);
-                boolean isExistFile = false;
-                if(existFilePaths.length > 0){
-                    isExistFile = true;
-                }
-                /**
-                 if ("truncate".equals(writeMode) && isExistFile ) {
+            //检查路径是否存在
+            if(!hdfsHelper.isPathexists(path)){
+                hdfsHelper.createDir(new Path(path));
+            }
+            //根据writeMode对目录下文件进行处理
+            Path[] existFilePaths = hdfsHelper.hdfsDirList(path,fileName);
+            boolean isExistFile = false;
+            if(existFilePaths.length > 0){
+                isExistFile = true;
+            }
+
+             if ("truncate".equals(writeMode) && isExistFile ) {
                  LOG.info(String.format("由于您配置了writeMode truncate, 开始清理 [%s] 下面以 [%s] 开头的内容",
                  path, fileName));
                  hdfsHelper.deleteFiles(existFilePaths);
-                 } else
-                 */
-                if ("append".equalsIgnoreCase(writeMode)) {
-                    LOG.info(String.format("由于您配置了writeMode append, 写入前不做清理工作, [%s] 目录下写入相应文件名前缀  [%s] 的文件",
-                            path, fileName));
-                } else if ("nonconflict".equalsIgnoreCase(writeMode) && isExistFile) {
-                    LOG.info(String.format("由于您配置了writeMode nonConflict, 开始检查 [%s] 下面的内容", path));
-                    List<String> allFiles = new ArrayList<String>();
-                    for (Path eachFile : existFilePaths) {
-                        allFiles.add(eachFile.toString());
-                    }
-                    LOG.error(String.format("冲突文件列表为: [%s]", StringUtils.join(allFiles, ",")));
-                    throw DataXException.asDataXException(HdfsWriterErrorCode.ILLEGAL_VALUE,
-                            String.format("由于您配置了writeMode nonConflict,但您配置的path: [%s] 目录不为空, 下面存在其他文件或文件夹.", path));
+             } else if ("append".equalsIgnoreCase(writeMode)) {
+                LOG.info(String.format("由于您配置了writeMode append, 写入前不做清理工作, [%s] 目录下写入相应文件名前缀  [%s] 的文件",
+                        path, fileName));
+            } else if ("nonconflict".equalsIgnoreCase(writeMode) && isExistFile) {
+                LOG.info(String.format("由于您配置了writeMode nonConflict, 开始检查 [%s] 下面的内容", path));
+                List<String> allFiles = new ArrayList<String>();
+                for (Path eachFile : existFilePaths) {
+                    allFiles.add(eachFile.toString());
                 }
-            }else{
+                LOG.error(String.format("冲突文件列表为: [%s]", StringUtils.join(allFiles, ",")));
                 throw DataXException.asDataXException(HdfsWriterErrorCode.ILLEGAL_VALUE,
-                        String.format("您配置的path: [%s] 不存在, 请先在hive端创建对应的数据库和表.", path));
+                        String.format("由于您配置了writeMode nonConflict,但您配置的path: [%s] 目录不为空, 下面存在其他文件或文件夹.", path));
             }
         }
 
@@ -362,6 +369,10 @@ public class HdfsWriter extends Writer {
             }else if(fileType.equalsIgnoreCase("ORC")){
                 //写ORC FILE
                 hdfsHelper.orcFileStartWrite(lineReceiver,this.writerSliceConfig, this.fileName,
+                        this.getTaskPluginCollector());
+            }else if(fileType.equalsIgnoreCase("PARQUET")) {
+                //写Parquet FILE
+                hdfsHelper.parquetFileStartWrite(lineReceiver, this.writerSliceConfig, this.fileName,
                         this.getTaskPluginCollector());
             }
 
