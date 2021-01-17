@@ -35,6 +35,12 @@
             <groupId>com.datastax.cassandra</groupId>
             <artifactId>cassandra-driver-core</artifactId>
             <version>3.6.0</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>com.google.guava</artifactId>
+                    <groupId>guava</groupId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
