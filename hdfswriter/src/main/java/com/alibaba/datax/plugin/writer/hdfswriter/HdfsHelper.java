@@ -123,6 +123,9 @@ public  class HdfsHelper {
                             case BIGINT:
                                 builder.set(colname, Integer.valueOf(rowData));
                                 break;
+                            case LONG:
+                                builder.set(colname, Long.valueOf(rowData));
+                                break;
                             case FLOAT:
                                 builder.set(colname, Float.valueOf(rowData));
                                 break;

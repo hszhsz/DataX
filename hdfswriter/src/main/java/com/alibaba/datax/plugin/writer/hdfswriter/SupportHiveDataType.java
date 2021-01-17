@@ -5,6 +5,7 @@ public enum SupportHiveDataType {
     SMALLINT,
     INT,
     BIGINT,
+    LONG,
     FLOAT,
     DOUBLE,
 
