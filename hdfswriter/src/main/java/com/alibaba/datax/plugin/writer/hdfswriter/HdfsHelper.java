@@ -490,7 +490,9 @@ public  class HdfsHelper {
                         + column.getString("type").toLowerCase() + "\"},";
             }
         }
+
         strschema = strschema.substring(0, strschema.length() - 1) + " ]}";
+        LOG.info("parquet scheme is: {}", strschema);
         Schema.Parser parser = new Schema.Parser().setValidate(true);
         Schema parSchema = parser.parse(strschema);
 
