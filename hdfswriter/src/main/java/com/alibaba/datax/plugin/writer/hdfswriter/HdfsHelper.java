@@ -313,7 +313,7 @@ public  class HdfsHelper {
                     }
                     LOG.info(String.format("start rename file [%s] to file [%s].", srcFile,dstFile));
                     boolean renameTag = false;
-                    if(fileSystem.exists(srcFilePah)) {
+                    if(!srcFile.contains("$folder$") && fileSystem.exists(srcFilePah)) {
                         long fileLen = fileSystem.getFileStatus(srcFilePah).getLen();
                         if (fileLen > 0) {
                             renameTag = fileSystem.rename(srcFilePah, dstFilePah);

@@ -87,7 +87,7 @@ public class HdfsWriter extends Writer {
             Set<String> supportedWriteModes = Sets.newHashSet("append", "nonconflict", "truncate");
             if (!supportedWriteModes.contains(writeMode)) {
                 throw DataXException.asDataXException(HdfsWriterErrorCode.ILLEGAL_VALUE,
-                        String.format("仅支持append, nonConflict两种模式, 不支持您配置的 writeMode 模式 : [%s]",
+                        String.format("仅支持append, nonConflict，truncate两种模式, 不支持您配置的 writeMode 模式 : [%s]",
                                 writeMode));
             }
             this.writerSliceConfig.set(Key.WRITE_MODE, writeMode);
@@ -175,8 +175,7 @@ public class HdfsWriter extends Writer {
             }
 
              if ("truncate".equals(writeMode) && isExistFile ) {
-                 LOG.info(String.format("由于您配置了writeMode truncate, 开始清理 [%s] 下面以 [%s] 开头的内容",
-                 path, fileName));
+                 LOG.info(String.format("由于您配置了writeMode truncate,  [%s] 下面的内容将被覆盖重写", path));
                  hdfsHelper.deleteFiles(existFilePaths);
              } else if ("append".equalsIgnoreCase(writeMode)) {
                 LOG.info(String.format("由于您配置了writeMode append, 写入前不做清理工作, [%s] 目录下写入相应文件名前缀  [%s] 的文件",
