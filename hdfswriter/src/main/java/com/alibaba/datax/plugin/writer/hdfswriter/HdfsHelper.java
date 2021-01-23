@@ -16,8 +16,8 @@ import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.hadoop.fs.*;
-import org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat;
-import org.apache.hadoop.hive.ql.io.orc.OrcSerde;
+//import org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat;
+//import org.apache.hadoop.hive.ql.io.orc.OrcSerde;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
@@ -535,39 +535,39 @@ public  class HdfsHelper {
      */
     public void orcFileStartWrite(RecordReceiver lineReceiver, Configuration config, String fileName,
                                   TaskPluginCollector taskPluginCollector){
-        List<Configuration>  columns = config.getListConfiguration(Key.COLUMN);
-        String compress = config.getString(Key.COMPRESS, null);
-        List<String> columnNames = getColumnNames(columns);
-        List<ObjectInspector> columnTypeInspectors = getColumnTypeInspectors(columns);
-        StructObjectInspector inspector = (StructObjectInspector)ObjectInspectorFactory
-                .getStandardStructObjectInspector(columnNames, columnTypeInspectors);
-
-        OrcSerde orcSerde = new OrcSerde();
-
-        FileOutputFormat outFormat = new OrcOutputFormat();
-        if(!"NONE".equalsIgnoreCase(compress) && null != compress ) {
-            Class<? extends CompressionCodec> codecClass = getCompressCodec(compress);
-            if (null != codecClass) {
-                outFormat.setOutputCompressorClass(conf, codecClass);
-            }
-        }
-        try {
-            RecordWriter writer = outFormat.getRecordWriter(fileSystem, conf, fileName, Reporter.NULL);
-            Record record = null;
-            while ((record = lineReceiver.getFromReader()) != null) {
-                MutablePair<List<Object>, Boolean> transportResult =  transportOneRecord(record,columns,taskPluginCollector);
-                if (!transportResult.getRight()) {
-                    writer.write(NullWritable.get(), orcSerde.serialize(transportResult.getLeft(), inspector));
-                }
-            }
-            writer.close(Reporter.NULL);
-        } catch (Exception e) {
-            String message = String.format("写文件文件[%s]时发生IO异常,请检查您的网络是否正常！", fileName);
-            LOG.error(message);
-            Path path = new Path(fileName);
-            deleteDir(path.getParent());
-            throw DataXException.asDataXException(HdfsWriterErrorCode.Write_FILE_IO_ERROR, e);
-        }
+//        List<Configuration>  columns = config.getListConfiguration(Key.COLUMN);
+//        String compress = config.getString(Key.COMPRESS, null);
+//        List<String> columnNames = getColumnNames(columns);
+//        List<ObjectInspector> columnTypeInspectors = getColumnTypeInspectors(columns);
+//        StructObjectInspector inspector = (StructObjectInspector)ObjectInspectorFactory
+//                .getStandardStructObjectInspector(columnNames, columnTypeInspectors);
+//
+//        OrcSerde orcSerde = new OrcSerde();
+//
+//        FileOutputFormat outFormat = new OrcOutputFormat();
+//        if(!"NONE".equalsIgnoreCase(compress) && null != compress ) {
+//            Class<? extends CompressionCodec> codecClass = getCompressCodec(compress);
+//            if (null != codecClass) {
+//                outFormat.setOutputCompressorClass(conf, codecClass);
+//            }
+//        }
+//        try {
+//            RecordWriter writer = outFormat.getRecordWriter(fileSystem, conf, fileName, Reporter.NULL);
+//            Record record = null;
+//            while ((record = lineReceiver.getFromReader()) != null) {
+//                MutablePair<List<Object>, Boolean> transportResult =  transportOneRecord(record,columns,taskPluginCollector);
+//                if (!transportResult.getRight()) {
+//                    writer.write(NullWritable.get(), orcSerde.serialize(transportResult.getLeft(), inspector));
+//                }
+//            }
+//            writer.close(Reporter.NULL);
+//        } catch (Exception e) {
+//            String message = String.format("写文件文件[%s]时发生IO异常,请检查您的网络是否正常！", fileName);
+//            LOG.error(message);
+//            Path path = new Path(fileName);
+//            deleteDir(path.getParent());
+//            throw DataXException.asDataXException(HdfsWriterErrorCode.Write_FILE_IO_ERROR, e);
+//        }
     }
 
     public List<String> getColumnNames(List<Configuration> columns){
@@ -636,20 +636,20 @@ public  class HdfsHelper {
         return columnTypeInspectors;
     }
 
-    public OrcSerde getOrcSerde(Configuration config){
-        String fieldDelimiter = config.getString(Key.FIELD_DELIMITER);
-        String compress = config.getString(Key.COMPRESS);
-        String encoding = config.getString(Key.ENCODING);
-
-        OrcSerde orcSerde = new OrcSerde();
-        Properties properties = new Properties();
-        properties.setProperty("orc.bloom.filter.columns", fieldDelimiter);
-        properties.setProperty("orc.compress", compress);
-        properties.setProperty("orc.encoding.strategy", encoding);
-
-        orcSerde.initialize(conf, properties);
-        return orcSerde;
-    }
+//    public OrcSerde getOrcSerde(Configuration config){
+//        String fieldDelimiter = config.getString(Key.FIELD_DELIMITER);
+//        String compress = config.getString(Key.COMPRESS);
+//        String encoding = config.getString(Key.ENCODING);
+//
+//        OrcSerde orcSerde = new OrcSerde();
+//        Properties properties = new Properties();
+//        properties.setProperty("orc.bloom.filter.columns", fieldDelimiter);
+//        properties.setProperty("orc.compress", compress);
+//        properties.setProperty("orc.encoding.strategy", encoding);
+//
+//        orcSerde.initialize(conf, properties);
+//        return orcSerde;
+//    }
 
     public static MutablePair<List<Object>, Boolean> transportOneRecord(
             Record record,List<Configuration> columnsConfiguration,
