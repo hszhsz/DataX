@@ -17,12 +17,12 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hive.ql.io.RCFile;
-import org.apache.hadoop.hive.ql.io.RCFileRecordReader;
-import org.apache.hadoop.hive.ql.io.orc.OrcFile;
-import org.apache.hadoop.hive.ql.io.orc.OrcInputFormat;
-import org.apache.hadoop.hive.ql.io.orc.OrcSerde;
-import org.apache.hadoop.hive.ql.io.orc.Reader;
+//import org.apache.hadoop.hive.ql.io.RCFile;
+//import org.apache.hadoop.hive.ql.io.RCFileRecordReader;
+//import org.apache.hadoop.hive.ql.io.orc.OrcFile;
+//import org.apache.hadoop.hive.ql.io.orc.OrcInputFormat;
+//import org.apache.hadoop.hive.ql.io.orc.OrcSerde;
+//import org.apache.hadoop.hive.ql.io.orc.Reader;
 import org.apache.hadoop.hive.serde2.columnar.BytesRefArrayWritable;
 import org.apache.hadoop.hive.serde2.columnar.BytesRefWritable;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
@@ -260,41 +260,41 @@ public class DFSUtil {
 
         Path rcFilePath = new Path(sourceRcFilePath);
         FileSystem fs = null;
-        RCFileRecordReader recordReader = null;
-        try {
-            fs = FileSystem.get(rcFilePath.toUri(), hadoopConf);
-            long fileLen = fs.getFileStatus(rcFilePath).getLen();
-            FileSplit split = new FileSplit(rcFilePath, 0, fileLen, (String[]) null);
-            recordReader = new RCFileRecordReader(hadoopConf, split);
-            LongWritable key = new LongWritable();
-            BytesRefArrayWritable value = new BytesRefArrayWritable();
-            Text txt = new Text();
-            while (recordReader.next(key, value)) {
-                String[] sourceLine = new String[value.size()];
-                txt.clear();
-                for (int i = 0; i < value.size(); i++) {
-                    BytesRefWritable v = value.get(i);
-                    txt.set(v.getData(), v.getStart(), v.getLength());
-                    sourceLine[i] = txt.toString();
-                }
-                UnstructuredStorageReaderUtil.transportOneRecord(recordSender,
-                        column, sourceLine, nullFormat, taskPluginCollector);
-            }
-
-        } catch (IOException e) {
-            String message = String.format("读取文件[%s]时出错", sourceRcFilePath);
-            LOG.error(message);
-            throw DataXException.asDataXException(HdfsReaderErrorCode.READ_RCFILE_ERROR, message, e);
-        } finally {
-            try {
-                if (recordReader != null) {
-                    recordReader.close();
-                    LOG.info("Finally, Close RCFileRecordReader.");
-                }
-            } catch (IOException e) {
-                LOG.warn(String.format("finally: 关闭RCFileRecordReader失败, %s", e.getMessage()));
-            }
-        }
+//        RCFileRecordReader recordReader = null;
+//        try {
+//            fs = FileSystem.get(rcFilePath.toUri(), hadoopConf);
+//            long fileLen = fs.getFileStatus(rcFilePath).getLen();
+//            FileSplit split = new FileSplit(rcFilePath, 0, fileLen, (String[]) null);
+//            recordReader = new RCFileRecordReader(hadoopConf, split);
+//            LongWritable key = new LongWritable();
+//            BytesRefArrayWritable value = new BytesRefArrayWritable();
+//            Text txt = new Text();
+//            while (recordReader.next(key, value)) {
+//                String[] sourceLine = new String[value.size()];
+//                txt.clear();
+//                for (int i = 0; i < value.size(); i++) {
+//                    BytesRefWritable v = value.get(i);
+//                    txt.set(v.getData(), v.getStart(), v.getLength());
+//                    sourceLine[i] = txt.toString();
+//                }
+//                UnstructuredStorageReaderUtil.transportOneRecord(recordSender,
+//                        column, sourceLine, nullFormat, taskPluginCollector);
+//            }
+//
+//        } catch (IOException e) {
+//            String message = String.format("读取文件[%s]时出错", sourceRcFilePath);
+//            LOG.error(message);
+//            throw DataXException.asDataXException(HdfsReaderErrorCode.READ_RCFILE_ERROR, message, e);
+//        } finally {
+//            try {
+//                if (recordReader != null) {
+//                    recordReader.close();
+//                    LOG.info("Finally, Close RCFileRecordReader.");
+//                }
+//            } catch (IOException e) {
+//                LOG.warn(String.format("finally: 关闭RCFileRecordReader失败, %s", e.getMessage()));
+//            }
+//        }
 
     }
 
@@ -303,73 +303,73 @@ public class DFSUtil {
         LOG.info(String.format("Start Read orcfile [%s].", sourceOrcFilePath));
         List<ColumnEntry> column = UnstructuredStorageReaderUtil
                 .getListColumnEntry(readerSliceConfig, com.alibaba.datax.plugin.unstructuredstorage.reader.Key.COLUMN);
-        String nullFormat = readerSliceConfig.getString(com.alibaba.datax.plugin.unstructuredstorage.reader.Key.NULL_FORMAT);
-        StringBuilder allColumns = new StringBuilder();
-        StringBuilder allColumnTypes = new StringBuilder();
-        boolean isReadAllColumns = false;
-        int columnIndexMax = -1;
-        // 判断是否读取所有列
-        if (null == column || column.size() == 0) {
-            int allColumnsCount = getAllColumnsCount(sourceOrcFilePath);
-            columnIndexMax = allColumnsCount - 1;
-            isReadAllColumns = true;
-        } else {
-            columnIndexMax = getMaxIndex(column);
-        }
-        for (int i = 0; i <= columnIndexMax; i++) {
-            allColumns.append("col");
-            allColumnTypes.append("string");
-            if (i != columnIndexMax) {
-                allColumns.append(",");
-                allColumnTypes.append(":");
-            }
-        }
-        if (columnIndexMax >= 0) {
-            JobConf conf = new JobConf(hadoopConf);
-            Path orcFilePath = new Path(sourceOrcFilePath);
-            Properties p = new Properties();
-            p.setProperty("columns", allColumns.toString());
-            p.setProperty("columns.types", allColumnTypes.toString());
-            try {
-                OrcSerde serde = new OrcSerde();
-                serde.initialize(conf, p);
-                StructObjectInspector inspector = (StructObjectInspector) serde.getObjectInspector();
-                InputFormat<?, ?> in = new OrcInputFormat();
-                FileInputFormat.setInputPaths(conf, orcFilePath.toString());
-
-                //If the network disconnected, will retry 45 times, each time the retry interval for 20 seconds
-                //Each file as a split
-                //TODO multy threads
-                InputSplit[] splits = in.getSplits(conf, 1);
-
-                RecordReader reader = in.getRecordReader(splits[0], conf, Reporter.NULL);
-                Object key = reader.createKey();
-                Object value = reader.createValue();
-                // 获取列信息
-                List<? extends StructField> fields = inspector.getAllStructFieldRefs();
-
-                List<Object> recordFields;
-                while (reader.next(key, value)) {
-                    recordFields = new ArrayList<Object>();
-
-                    for (int i = 0; i <= columnIndexMax; i++) {
-                        Object field = inspector.getStructFieldData(value, fields.get(i));
-                        recordFields.add(field);
-                    }
-                    transportOneRecord(column, recordFields, recordSender,
-                            taskPluginCollector, isReadAllColumns, nullFormat);
-                }
-                reader.close();
-            } catch (Exception e) {
-                String message = String.format("从orcfile文件路径[%s]中读取数据发生异常，请联系系统管理员。"
-                        , sourceOrcFilePath);
-                LOG.error(message);
-                throw DataXException.asDataXException(HdfsReaderErrorCode.READ_FILE_ERROR, message);
-            }
-        } else {
-            String message = String.format("请确认您所读取的列配置正确！columnIndexMax 小于0,column:%s", JSON.toJSONString(column));
-            throw DataXException.asDataXException(HdfsReaderErrorCode.BAD_CONFIG_VALUE, message);
-        }
+//        String nullFormat = readerSliceConfig.getString(com.alibaba.datax.plugin.unstructuredstorage.reader.Key.NULL_FORMAT);
+//        StringBuilder allColumns = new StringBuilder();
+//        StringBuilder allColumnTypes = new StringBuilder();
+//        boolean isReadAllColumns = false;
+//        int columnIndexMax = -1;
+//        // 判断是否读取所有列
+//        if (null == column || column.size() == 0) {
+//            int allColumnsCount = getAllColumnsCount(sourceOrcFilePath);
+//            columnIndexMax = allColumnsCount - 1;
+//            isReadAllColumns = true;
+//        } else {
+//            columnIndexMax = getMaxIndex(column);
+//        }
+//        for (int i = 0; i <= columnIndexMax; i++) {
+//            allColumns.append("col");
+//            allColumnTypes.append("string");
+//            if (i != columnIndexMax) {
+//                allColumns.append(",");
+//                allColumnTypes.append(":");
+//            }
+//        }
+//        if (columnIndexMax >= 0) {
+//            JobConf conf = new JobConf(hadoopConf);
+//            Path orcFilePath = new Path(sourceOrcFilePath);
+//            Properties p = new Properties();
+//            p.setProperty("columns", allColumns.toString());
+//            p.setProperty("columns.types", allColumnTypes.toString());
+//            try {
+//                OrcSerde serde = new OrcSerde();
+//                serde.initialize(conf, p);
+//                StructObjectInspector inspector = (StructObjectInspector) serde.getObjectInspector();
+//                InputFormat<?, ?> in = new OrcInputFormat();
+//                FileInputFormat.setInputPaths(conf, orcFilePath.toString());
+//
+//                //If the network disconnected, will retry 45 times, each time the retry interval for 20 seconds
+//                //Each file as a split
+//                //TODO multy threads
+//                InputSplit[] splits = in.getSplits(conf, 1);
+//
+//                RecordReader reader = in.getRecordReader(splits[0], conf, Reporter.NULL);
+//                Object key = reader.createKey();
+//                Object value = reader.createValue();
+//                // 获取列信息
+//                List<? extends StructField> fields = inspector.getAllStructFieldRefs();
+//
+//                List<Object> recordFields;
+//                while (reader.next(key, value)) {
+//                    recordFields = new ArrayList<Object>();
+//
+//                    for (int i = 0; i <= columnIndexMax; i++) {
+//                        Object field = inspector.getStructFieldData(value, fields.get(i));
+//                        recordFields.add(field);
+//                    }
+//                    transportOneRecord(column, recordFields, recordSender,
+//                            taskPluginCollector, isReadAllColumns, nullFormat);
+//                }
+//                reader.close();
+//            } catch (Exception e) {
+//                String message = String.format("从orcfile文件路径[%s]中读取数据发生异常，请联系系统管理员。"
+//                        , sourceOrcFilePath);
+//                LOG.error(message);
+//                throw DataXException.asDataXException(HdfsReaderErrorCode.READ_FILE_ERROR, message);
+//            }
+//        } else {
+//            String message = String.format("请确认您所读取的列配置正确！columnIndexMax 小于0,column:%s", JSON.toJSONString(column));
+//            throw DataXException.asDataXException(HdfsReaderErrorCode.BAD_CONFIG_VALUE, message);
+//        }
     }
 
     public void parquetFileStartRead(String sourceParquestFilePath, Configuration readerSliceConfig,
@@ -644,14 +644,15 @@ public class DFSUtil {
     }
 
     private int getAllColumnsCount(String filePath) {
-        Path path = new Path(filePath);
-        try {
-            Reader reader = OrcFile.createReader(path, OrcFile.readerOptions(hadoopConf));
-            return reader.getTypes().get(0).getSubtypesCount();
-        } catch (IOException e) {
-            String message = "读取orcfile column列数失败，请联系系统管理员";
-            throw DataXException.asDataXException(HdfsReaderErrorCode.READ_FILE_ERROR, message);
-        }
+//        Path path = new Path(filePath);
+//        try {
+//            Reader reader = OrcFile.createReader(path, OrcFile.readerOptions(hadoopConf));
+//            return reader.getTypes().get(0).getSubtypesCount();
+//        } catch (IOException e) {
+//            String message = "读取orcfile column列数失败，请联系系统管理员";
+//            throw DataXException.asDataXException(HdfsReaderErrorCode.READ_FILE_ERROR, message);
+//        }
+        return 0;
     }
 
     private int getMaxIndex(List<ColumnEntry> columnConfigs) {
@@ -722,44 +723,44 @@ public class DFSUtil {
 
     // 判断file是否是ORC File
     private boolean isORCFile(Path file, FileSystem fs, FSDataInputStream in) {
-        try {
-            // figure out the size of the file using the option or filesystem
-            long size = fs.getFileStatus(file).getLen();
-
-            //read last bytes into buffer to get PostScript
-            int readSize = (int) Math.min(size, DIRECTORY_SIZE_GUESS);
-            in.seek(size - readSize);
-            ByteBuffer buffer = ByteBuffer.allocate(readSize);
-            in.readFully(buffer.array(), buffer.arrayOffset() + buffer.position(),
-                    buffer.remaining());
-
-            //read the PostScript
-            //get length of PostScript
-            int psLen = buffer.get(readSize - 1) & 0xff;
-            int len = OrcFile.MAGIC.length();
-            if (psLen < len + 1) {
-                return false;
-            }
-            int offset = buffer.arrayOffset() + buffer.position() + buffer.limit() - 1
-                    - len;
-            byte[] array = buffer.array();
-            // now look for the magic string at the end of the postscript.
-            if (Text.decode(array, offset, len).equals(OrcFile.MAGIC)) {
-                return true;
-            } else {
-                // If it isn't there, this may be the 0.11.0 version of ORC.
-                // Read the first 3 bytes of the file to check for the header
-                in.seek(0);
-                byte[] header = new byte[len];
-                in.readFully(header, 0, len);
-                // if it isn't there, this isn't an ORC file
-                if (Text.decode(header, 0, len).equals(OrcFile.MAGIC)) {
-                    return true;
-                }
-            }
-        } catch (IOException e) {
-            LOG.info(String.format("检查文件类型: [%s] 不是ORC File.", file.toString()));
-        }
+//        try {
+//            // figure out the size of the file using the option or filesystem
+//            long size = fs.getFileStatus(file).getLen();
+//
+//            //read last bytes into buffer to get PostScript
+//            int readSize = (int) Math.min(size, DIRECTORY_SIZE_GUESS);
+//            in.seek(size - readSize);
+//            ByteBuffer buffer = ByteBuffer.allocate(readSize);
+//            in.readFully(buffer.array(), buffer.arrayOffset() + buffer.position(),
+//                    buffer.remaining());
+//
+//            //read the PostScript
+//            //get length of PostScript
+//            int psLen = buffer.get(readSize - 1) & 0xff;
+//            int len = OrcFile.MAGIC.length();
+//            if (psLen < len + 1) {
+//                return false;
+//            }
+//            int offset = buffer.arrayOffset() + buffer.position() + buffer.limit() - 1
+//                    - len;
+//            byte[] array = buffer.array();
+//            // now look for the magic string at the end of the postscript.
+//            if (Text.decode(array, offset, len).equals(OrcFile.MAGIC)) {
+//                return true;
+//            } else {
+//                // If it isn't there, this may be the 0.11.0 version of ORC.
+//                // Read the first 3 bytes of the file to check for the header
+//                in.seek(0);
+//                byte[] header = new byte[len];
+//                in.readFully(header, 0, len);
+//                // if it isn't there, this isn't an ORC file
+//                if (Text.decode(header, 0, len).equals(OrcFile.MAGIC)) {
+//                    return true;
+//                }
+//            }
+//        } catch (IOException e) {
+//            LOG.info(String.format("检查文件类型: [%s] 不是ORC File.", file.toString()));
+//        }
         return false;
     }
 
@@ -802,18 +803,18 @@ public class DFSUtil {
                 }
             }
 
-            if (version == ORIGINAL_VERSION) {
-                try {
-                    Class<?> keyCls = hadoopConf.getClassByName(Text.readString(in));
-                    Class<?> valCls = hadoopConf.getClassByName(Text.readString(in));
-                    if (!keyCls.equals(RCFile.KeyBuffer.class)
-                            || !valCls.equals(RCFile.ValueBuffer.class)) {
-                        return false;
-                    }
-                } catch (ClassNotFoundException e) {
-                    return false;
-                }
-            }
+//            if (version == ORIGINAL_VERSION) {
+//                try {
+//                    Class<?> keyCls = hadoopConf.getClassByName(Text.readString(in));
+//                    Class<?> valCls = hadoopConf.getClassByName(Text.readString(in));
+//                    if (!keyCls.equals(RCFile.KeyBuffer.class)
+//                            || !valCls.equals(RCFile.ValueBuffer.class)) {
+//                        return false;
+//                    }
+//                } catch (ClassNotFoundException e) {
+//                    return false;
+//                }
+//            }
             boolean decompress = in.readBoolean(); // is compressed?
             if (version == ORIGINAL_VERSION) {
                 // is block-compressed? it should be always false.
