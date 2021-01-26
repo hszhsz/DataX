@@ -489,8 +489,8 @@ public  class HdfsHelper {
                         + getDecimalscale(column.getString("type")) + "}},";
             }
             else {
-                strschema += " {\"name\": \"" + column.getString("name") + "\", \"type\": \""
-                        + column.getString("type").toLowerCase() + "\"},";
+                strschema += " {\"name\": \"" + column.getString("name") + "\", \"type\": [\""
+                        + "null" + "\",\""+ column.getString("type").toLowerCase() + "\"]},";
             }
         }
 

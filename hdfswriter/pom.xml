@@ -242,6 +242,10 @@
                     <artifactId>alluxio-core-transport</artifactId>
                 </exclusion>
                 <exclusion>
+                    <groupId>org.alluxio</groupId>
+                    <artifactId>alluxio-core-base</artifactId>
+                </exclusion>
+                <exclusion>
                     <groupId>io.grpc</groupId>
                     <artifactId>grpc-api</artifactId>
                 </exclusion>
@@ -266,6 +270,10 @@
                 <exclusion>
                     <groupId>org.alluxio</groupId>
                     <artifactId>alluxio-core-transport</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.alluxio</groupId>
+                    <artifactId>alluxio-core-base</artifactId>
                 </exclusion>
                 <exclusion>
                     <groupId>io.grpc</groupId>
